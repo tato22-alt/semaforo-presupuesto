@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Presupuesto — Taller El Semáforo</title>
+<link rel="icon" href="logo.png">
+<style>
+  :root{
+    --tinta:#15181c;
+    --tenue:#5b636d;
+    --linea:#b9c0c8;
+    --linea-suave:#dfe3e8;
+    --papel:#fff;
+    --fondo:#eceff3;
+    --naranja:#F07E26;
+    --verde:#23B14C;
+    --rojo:#E1224B;
+
+    /* medidas de pantalla; en escritorio se agrandan más abajo */
+    --hoja-ancho:740px;
+    --txt-base:14px;
+    --txt-campo:13.5px;
+    --txt-razon:21px;
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--fondo);
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    color:var(--tinta);
+    font-size:var(--txt-base);
+    padding:14px 10px 96px;
+  }
+  input{font-family:inherit;color:inherit}
+
+  .hoja{
+    max-width:var(--hoja-ancho);margin:0 auto;background:var(--papel);
+    border:1px solid #d3d8de;box-shadow:0 2px 14px rgba(20,20,20,.09);
+    padding:18px;
+  }
+
+  /* ---------- cabecera ---------- */
+  .cab{display:flex;gap:12px;align-items:flex-start;border-bottom:2px solid var(--tinta);padding-bottom:8px}
+  .cab img{height:58px;width:auto;flex:none}
+  .cab-txt{flex:1;min-width:0}
+  .razon{font-size:var(--txt-razon);font-weight:800;letter-spacing:-.5px;line-height:1;margin:0 0 3px}
+  .sub{font-size:10px;line-height:1.5;color:var(--tenue)}
+  .cab-der{flex:none;text-align:right;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+  .tipo{font-size:13px;font-weight:800;letter-spacing:2.6px;color:var(--tenue)}
+  .nro{border:1.5px solid var(--tinta);padding:2px 10px;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+  .f-caja{border:1px solid var(--linea);padding:2px 6px}
+  .f-caja input{border:0;background:transparent;font-size:12px;font-weight:600;text-align:center;width:106px;padding:1px 0}
+  .f-caja input:focus{outline:0}
+  #fecha-txt{display:none;font-size:12px;font-weight:600}
+
+  /* enlaces del encabezado: deben verse igual que el texto plano */
+  .contacto{color:inherit;text-decoration:none;display:inline-block;padding:3px 0}
+
+  /* ---------- datos del cliente ---------- */
+  .datos{display:grid;grid-template-columns:1fr 1fr;gap:0 22px;padding:8px 0 2px}
+  .campo{display:flex;align-items:baseline;gap:6px;border-bottom:1px solid var(--linea-suave);padding:3px 0 1px}
+  .campo.ancho{grid-column:1 / -1}
+  .campo label{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--tenue);flex:none;font-weight:700}
+  .campo input{flex:1;min-width:0;border:0;background:transparent;font-size:var(--txt-campo);padding:1px 2px 2px}
+  .campo input:focus{outline:0;background:#fff8e6}
+
+  /* ---------- conceptos ---------- */
+  table{width:100%;border-collapse:collapse;margin-top:10px;border:1.5px solid var(--tinta)}
+  thead th{
+    font-size:9.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--tenue);font-weight:700;
+    text-align:left;padding:4px 8px;border-bottom:1.5px solid var(--tinta);background:#f7f8fa;
+  }
+  th.c-imp{width:140px;text-align:right}
+  th.c-x{width:32px}
+  tbody td{border-bottom:1px solid var(--linea-suave);padding:0}
+  tbody input,tfoot input{width:100%;border:0;background:transparent;font-size:var(--txt-campo);padding:8px}
+  tbody input:focus,tfoot input:focus{outline:0;background:#fff8e6}
+  td.imp input{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+  tfoot .r-mo td{border-top:1.5px solid var(--tinta);border-bottom:0}
+  tfoot .r-mo span{display:block;padding:8px;font-size:var(--txt-campo);font-weight:700}
+  tfoot .r-mo input{font-weight:700}
+  .quitar{width:100%;border:0;background:transparent;color:#c3c9d0;font-size:18px;line-height:1;padding:7px 0;cursor:pointer}
+  .quitar:hover{color:var(--rojo)}
+  .add{
+    margin-top:8px;width:100%;background:transparent;border:1px dashed var(--linea);
+    color:var(--tenue);font:inherit;font-size:12.5px;font-weight:600;padding:9px;cursor:pointer;
+  }
+  .add:hover{border-color:var(--naranja);color:var(--naranja)}
+
+  /* ---------- total ---------- */
+  .tot{margin:10px 0 0 auto;width:100%;max-width:322px}
+  .fila{display:flex;justify-content:space-between;align-items:center;gap:14px;
+        border-top:1.5px solid var(--tinta);border-bottom:4px double var(--tinta);padding:9px 0;font-size:19px}
+  .fila span{letter-spacing:.6px;text-transform:uppercase;font-size:12px;font-weight:700}
+  .fila b{font-variant-numeric:tabular-nums;font-weight:700}
+  .letras{margin-top:9px;font-size:11px;color:var(--tenue);text-align:right}
+  .letras span{color:var(--tinta)}
+
+  /* ---------- menú de acciones ---------- */
+  .acciones{
+    position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #d3d8de;
+    padding:9px 12px calc(9px + env(safe-area-inset-bottom));
+    max-width:760px;margin:0 auto;box-shadow:0 -2px 14px rgba(20,20,20,.09);z-index:40;
+  }
+  .disparador{
+    width:100%;border:0;background:var(--tinta);color:#fff;font:inherit;font-size:15px;
+    font-weight:700;padding:14px;cursor:pointer;display:flex;justify-content:center;align-items:center;gap:8px;
+  }
+  .disparador .flecha{font-size:11px;transition:transform .18s}
+  .acciones.abierto .disparador .flecha{transform:rotate(180deg)}
+  .menu{display:none;border:1px solid #d3d8de;border-bottom:0;background:#fff}
+  .acciones.abierto .menu{display:block}
+  .menu button{
+    width:100%;border:0;border-bottom:1px solid var(--linea-suave);background:transparent;
+    font:inherit;font-size:15px;text-align:left;padding:15px 16px;cursor:pointer;color:var(--tinta);
+  }
+  .menu button:hover{background:#f7f8fa}
+  .menu button.principal{font-weight:700;color:var(--verde)}
+
+  /* ---------- historial ---------- */
+  .modal{position:fixed;inset:0;background:rgba(20,20,20,.5);display:none;z-index:60;padding:14px}
+  .modal.abierto{display:flex;align-items:flex-end;justify-content:center}
+  .panel{background:#fff;width:100%;max-width:600px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden}
+  .p-cab{padding:13px 16px;border-bottom:1px solid var(--linea-suave);display:flex;justify-content:space-between;align-items:center}
+  .p-cab h2{margin:0;font-size:15px}
+  .p-cab button{border:0;background:transparent;font-size:21px;color:var(--linea);cursor:pointer;line-height:1}
+  .lista{overflow-y:auto}
+  .item{padding:12px 16px;border-bottom:1px solid #f2f4f6;display:flex;justify-content:space-between;gap:10px;cursor:pointer}
+  .item:hover{background:#f7f8fa}
+  .i-n{font-weight:700;font-size:14px}
+  .i-d{font-size:12px;color:var(--tenue);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .i-m{font-weight:700;font-variant-numeric:tabular-nums;font-size:14px;white-space:nowrap}
+  .vacio{padding:28px 16px;text-align:center;color:var(--tenue);font-size:13px}
+
+  /* ---------- avisos ---------- */
+  .aviso{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:82px;background:var(--tinta);color:#fff;
+    padding:10px 18px;font-size:13px;z-index:70;opacity:0;pointer-events:none;transition:opacity .2s;
+  }
+  .aviso.ver{opacity:1}
+  .alerta{
+    max-width:var(--hoja-ancho);margin:0 auto 10px;padding:11px 13px;font-size:13px;line-height:1.5;
+    background:#fdecef;border-left:4px solid var(--rojo);color:#8c0f2c;
+  }
+  .alerta[hidden]{display:none}
+  .alerta b{display:block;margin-bottom:2px}
+
+  /* ---------- escritorio: todo más grande ---------- */
+  @media (min-width:1000px){
+    :root{--hoja-ancho:940px;--txt-base:16px;--txt-campo:16px;--txt-razon:27px}
+    body{padding:26px 20px 110px}
+    .hoja{padding:30px 32px}
+    .cab img{height:78px}
+    .sub{font-size:12.5px}
+    .nro{font-size:20px;padding:3px 13px}
+    .tipo{font-size:15px}
+    .f-caja input{font-size:14px;width:124px}
+    .campo{padding:6px 0 3px}
+    .campo label{font-size:11.5px}
+    .datos{gap:0 34px;padding:14px 0 4px}
+    thead th{font-size:11px;padding:7px 11px}
+    tbody input,tfoot input,tfoot .r-mo span{padding:11px}
+    table{margin-top:16px}
+    .add{font-size:14px;padding:12px}
+    .tot{max-width:400px;margin-top:16px}
+    .fila{font-size:25px;padding:12px 0}
+    .fila span{font-size:14px}
+    .letras{font-size:13px}
+    .acciones{padding:12px 14px}
+    .disparador{font-size:16px;padding:15px}
+    .menu button{font-size:16px;padding:16px 18px}
+  }
+  @media (max-width:520px){ .datos{grid-template-columns:1fr} }
+
+  /* ---------- impresión ---------- */
+  @media print{
+    @page{size:A4;margin:14mm}
+    body{background:#fff;padding:0;font-size:12px}
+    .hoja{max-width:none;border:0;box-shadow:none;padding:0}
+    .acciones,.add,.modal,.aviso,.alerta,.quitar,th.c-x{display:none!important}
+    td.x{display:none}
+    tr.vacia{display:none!important}
+    input{background:transparent!important}
+
+    /* los enlaces siguen siendo clickeables pero NUNCA muestran la URL */
+    a[href]:after,a[href]:before{content:none!important}
+    .contacto{color:inherit!important;text-decoration:none!important;padding:0}
+
+    .cab{padding-bottom:6px}
+    .cab img{height:46px}
+    .razon{font-size:17px}
+    .sub{font-size:8.5px;line-height:1.4}
+    .nro{font-size:15px;padding:2px 8px}
+    .tipo{font-size:11.5px}
+    .datos{padding:6px 0 1px}
+    .campo{padding:2px 0 0;border-bottom:1px solid #666}
+    .campo input{font-size:11.5px}
+    #fecha{display:none}
+    #fecha-txt{display:inline-block;width:106px;text-align:center}
+    table{margin-top:8px}
+    thead th{padding:4px 8px}
+    tbody input,tfoot input,tfoot .r-mo span{padding:5px 10px;font-size:11.5px}
+    td.imp input{padding-right:10px}
+    .tot{margin-top:8px}
+
+    /* si hay segunda hoja, que salga bien */
+    thead{display:table-header-group}
+    tfoot{display:table-row-group}
+    tr{break-inside:avoid;page-break-inside:avoid}
+    .tot,.cab{break-inside:avoid;page-break-inside:avoid}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="alerta" id="alerta-pestana" hidden>
+  <b>Esta pestaña está bloqueada</b>
+  Ya tenés el presupuesto abierto en otra pestaña. Si guardás desde las dos se repiten
+  los números y se pierde un presupuesto. Cerrá ésta y seguí en la otra.
+</div>
+
+<div class="alerta" id="alerta-datos" hidden>
+  <b>No se pudo leer el historial</b>
+  Los datos guardados en este navegador están dañados. El guardado quedó bloqueado
+  para no borrarlos.
+</div>
+
+<div class="hoja">
+  <header class="cab">
+    <img src="logo.png" alt="Taller El Semáforo">
+    <div class="cab-txt">
+      <p class="razon">Taller El Semáforo</p>
+      <div class="sub">
+        Taller El Semáforo SRL · CUIT 30-71219060-0<br>
+        <a class="contacto" href="https://www.google.com/maps/search/?api=1&amp;query=Boulevard+2172+Villa+Gesell+Buenos+Aires"
+           target="_blank" rel="noopener">Boulevard 2172 — Villa Gesell</a><br>
+        Tel. <a class="contacto" href="https://wa.me/5492255629046" target="_blank" rel="noopener">2255 629046</a>
+        · <a class="contacto" href="https://mail.google.com/mail/?view=cm&amp;to=tallerelsemaforosrl@gmail.com"
+             target="_blank" rel="noopener">tallerelsemaforosrl@gmail.com</a>
+      </div>
+    </div>
+    <div class="cab-der">
+      <div class="tipo">PRESUPUESTO</div>
+      <div class="nro">N° <span id="nro">—</span></div>
+      <div class="f-caja"><input type="date" id="fecha"><span id="fecha-txt"></span></div>
+    </div>
+  </header>
+
+  <section class="datos">
+    <div class="campo ancho"><label>Señor</label><input id="cliente" autocomplete="off"></div>
+    <div class="campo ancho"><label>Dirección</label><input id="direccion" autocomplete="off"></div>
+    <div class="campo"><label>Vehículo</label><input id="vehiculo" autocomplete="off"></div>
+    <div class="campo"><label>Patente</label><input id="patente" autocomplete="off" style="text-transform:uppercase"></div>
+    <div class="campo ancho"><label>Teléfono</label><input id="telefono" inputmode="tel" autocomplete="off"></div>
+  </section>
+
+  <table>
+    <thead>
+      <tr><th>Detalle</th><th class="c-imp">Importe</th><th class="c-x"></th></tr>
+    </thead>
+    <tbody id="items"></tbody>
+    <tfoot>
+      <tr class="r-mo">
+        <td><span>Mano de obra</span></td>
+        <td class="imp"><input id="mo" inputmode="numeric" placeholder="0"></td>
+        <td class="x"></td>
+      </tr>
+    </tfoot>
+  </table>
+  <button class="add" id="add">+ Agregar renglón</button>
+
+  <div class="tot">
+    <div class="fila"><span>Total</span><b id="total">$0</b></div>
+    <div class="letras">Son pesos <span id="letras">—</span></div>
+  </div>
+</div>
+
+<nav class="acciones" id="acciones">
+  <div class="menu">
+    <button id="b-pdf" class="principal">Guardar y hacer PDF</button>
+    <button id="b-nuevo">Nuevo presupuesto</button>
+    <button id="b-hist">Ver historial</button>
+    <button id="b-csv">Descargar CSV</button>
+  </div>
+  <button class="disparador" id="b-menu">Acciones <span class="flecha">▲</span></button>
+</nav>
+
+<div class="modal" id="modal">
+  <div class="panel">
+    <div class="p-cab">
+      <h2>Presupuestos guardados</h2>
+      <button id="b-cerrar" aria-label="Cerrar">×</button>
+    </div>
+    <div class="lista" id="lista"></div>
+  </div>
+</div>
+
+<div class="aviso" id="aviso"></div>
+
+<script>
+"use strict";
+
+/* ===================== configuración ===================== */
+const PRIMER_NUMERO = 16000;
+const CLAVE  = 'semaforo-presupuestos';
+const CANAL  = 'semaforo-presupuesto';
+const CAMPOS = ['fecha','cliente','direccion','vehiculo','patente','telefono'];
+
+const $ = id => document.getElementById(id);
+
+/* ===================== números ===================== */
+const aNumero  = v => {
+  const n = parseFloat(String(v ?? '').replace(/[^\d,-]/g, '').replace(',', '.'));
+  return isNaN(n) ? 0 : n;
+};
+const conMiles  = n => n ? Math.round(n).toLocaleString('es-AR') : '';
+const enPesos   = n => '$' + Math.round(n || 0).toLocaleString('es-AR');
+const capitalizar = t => t ? t[0].toUpperCase() + t.slice(1) : t;
+const normalizarPatente = v => String(v || '').toUpperCase().replace(/[\s.-]/g, '');
+const hoyISO = () => new Date().toISOString().slice(0, 10);
+
+/* ===================== número a letras ===================== */
+const U = ['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve'];
+const D = ['','','','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
+const C = ['','ciento','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+
+function centena(n){
+  if(n === 0)   return '';
+  if(n === 100) return 'cien';
+  const c = Math.floor(n / 100), r = n % 100;
+  let t = c ? C[c] : '';
+  if(r){
+    if(t) t += ' ';
+    if(r < 30) t += U[r];
+    else{
+      t += D[Math.floor(r / 10)];
+      if(r % 10) t += ' y ' + U[r % 10];
+    }
+  }
+  return t;
+}
+
+function enLetras(n){
+  n = Math.round(n);
+  if(n === 0) return 'cero';
+  if(n < 0)   return 'menos ' + enLetras(-n);
+  const millones = Math.floor(n / 1e6);
+  const miles    = Math.floor((n % 1e6) / 1000);
+  const unidades = n % 1000;
+  let t = '';
+  if(millones) t += (millones === 1 ? 'un millón' : centena(millones) + ' millones');
+  if(miles)    t += (t ? ' ' : '') + (miles === 1 ? 'mil' : centena(miles) + ' mil');
+  if(unidades) t += (t ? ' ' : '') + centena(unidades);
+  return t;
+}
+
+/* ===================== guardado =====================
+   Adaptador con una sola interfaz. Distinguir "vacío" de "dañado" es
+   importante: si un dato dañado se tomara por vacío, el primer guardado
+   pisaría todo el historial sin que nadie se entere. */
+const Guardado = (() => {
+  const delEntorno = typeof window.storage !== 'undefined';
+  return {
+    async leer(){
+      let bruto = null;
+      if(delEntorno){
+        try{
+          const r = await window.storage.get(CLAVE, false);
+          bruto = r && r.value ? r.value : null;
+        }catch(e){ return { estado:'vacio' }; }
+      }else{
+        try{ bruto = localStorage.getItem(CLAVE); }
+        catch(e){ return { estado:'error' }; }
+      }
+      if(!bruto) return { estado:'vacio' };
+      try{ return { estado:'ok', datos: JSON.parse(bruto) }; }
+      catch(e){ return { estado:'error' }; }
+    },
+    async grabar(datos){
+      const s = JSON.stringify(datos);
+      try{
+        if(delEntorno) return !!(await window.storage.set(CLAVE, s, false));
+        localStorage.setItem(CLAVE, s);
+        return true;
+      }catch(e){ return false; }
+    }
+  };
+})();
+
+/* ===================== estado ===================== */
+let guardados    = [];
+let proximo      = PRIMER_NUMERO;
+let numeroActual = PRIMER_NUMERO;
+let creadoEn     = null;   // se conserva al reabrir del historial
+let sucio        = false;  // hay cambios sin guardar
+let bloqueado    = false;  // otra pestaña tiene el control
+let modoSeguro   = false;  // historial ilegible: no se guarda nada
+
+/* ===================== una sola pestaña a la vez =====================
+   Dos pestañas leen el mismo próximo número y guardan con él; como el
+   guardado busca por número, la segunda pisaría a la primera en silencio. */
+const MI_ID = Math.random().toString(36).slice(2);
+let canal = null;
+let esperandoRespuesta = false;
+
+function bloquearPestana(){
+  bloqueado = true;
+  esperandoRespuesta = false;
+  $('alerta-pestana').hidden = false;
+}
+function liberarPestana(){
+  if(!bloqueado) return;
+  bloqueado = false;
+  $('alerta-pestana').hidden = true;
+}
+function sondear(){
+  if(!canal) return;
+  esperandoRespuesta = true;
+  canal.postMessage({ tipo:'hola', id: MI_ID });
+  setTimeout(() => {
+    if(esperandoRespuesta){ esperandoRespuesta = false; liberarPestana(); }
+  }, 700);
+}
+
+if(typeof BroadcastChannel !== 'undefined'){
+  canal = new BroadcastChannel(CANAL);
+  canal.onmessage = ({ data }) => {
+    if(!data) return;
+    if(data.tipo === 'hola' && data.id !== MI_ID && !bloqueado){
+      canal.postMessage({ tipo:'ocupado', para: data.id });
+    }else if(data.tipo === 'ocupado' && data.para === MI_ID){
+      bloquearPestana();
+    }else if(data.tipo === 'me-voy' && bloqueado){
+      sondear();
+    }
+  };
+  const avisarSalida = () => { if(!bloqueado) canal.postMessage({ tipo:'me-voy' }); };
+  window.addEventListener('pagehide', avisarSalida);      // dispara donde beforeunload no
+  window.addEventListener('beforeunload', avisarSalida);
+  setInterval(() => { if(bloqueado) sondear(); }, 5000);  // por si el aviso se pierde
+}
+
+/* ===================== renglones ===================== */
+const renglones = () => [...$('items').children];
+
+function agregarRenglon(detalle = '', importe = ''){
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    '<td><input class="det" autocomplete="off"></td>' +
+    '<td class="imp"><input class="mon" inputmode="numeric" placeholder="0"></td>' +
+    '<td class="x"><button class="quitar" aria-label="Quitar">×</button></td>';
+
+  const det = tr.querySelector('.det');
+  const mon = tr.querySelector('.mon');
+  det.value = detalle;
+  mon.value = conMiles(importe);
+
+  det.oninput = () => { sucio = true; marcarVacias(); };
+  mon.oninput = () => { sucio = true; calcular(); };
+  mon.onblur  = () => { mon.value = conMiles(aNumero(mon.value)); calcular(); };
+  tr.querySelector('.quitar').onclick = () => {
+    tr.remove();
+    if(!$('items').children.length) agregarRenglon();
+    sucio = true;
+    calcular();
+  };
+
+  $('items').appendChild(tr);
+  return tr;
+}
+
+/* Los renglones vacíos no se imprimen. */
+function marcarVacias(){
+  renglones().forEach(tr => {
+    const sinDetalle = !tr.querySelector('.det').value.trim();
+    const sinImporte = !aNumero(tr.querySelector('.mon').value);
+    tr.classList.toggle('vacia', sinDetalle && sinImporte);
+  });
+}
+
+/* ===================== cálculo ===================== */
+function calcular(){
+  const repuestos = renglones().reduce((s, tr) => s + aNumero(tr.querySelector('.mon').value), 0);
+  const total = repuestos + aNumero($('mo').value);
+  $('total').textContent  = enPesos(total);
+  $('letras').textContent = total ? capitalizar(enLetras(total)) : '—';
+  marcarVacias();
+}
+
+function pintarFecha(){
+  const v = $('fecha').value;
+  $('fecha-txt').textContent = v ? v.split('-').reverse().join('/') : '';
+}
+
+/* ===================== formulario ===================== */
+function leerFormulario(){
+  const items = renglones()
+    .map(tr => ({
+      detalle: tr.querySelector('.det').value.trim(),
+      importe: aNumero(tr.querySelector('.mon').value)
+    }))
+    .filter(i => i.detalle || i.importe);
+
+  const p = { numero: numeroActual, items };
+  CAMPOS.forEach(c => p[c] = $(c).value.trim());
+  p.patente            = normalizarPatente(p.patente);
+  p.subtotal_repuestos = items.reduce((s, i) => s + i.importe, 0);
+  p.monto_mano_obra    = aNumero($('mo').value);
+  p.monto_total        = p.subtotal_repuestos + p.monto_mano_obra;
+
+  const ahora = new Date().toISOString();
+  p.creado_en     = creadoEn || ahora;
+  p.modificado_en = ahora;
+  return p;
+}
+
+function mostrar(p){
+  numeroActual = p.numero;
+  creadoEn     = p.creado_en || null;
+  $('nro').textContent = p.numero;
+  CAMPOS.forEach(c => $(c).value = p[c] || '');
+  pintarFecha();
+  $('mo').value = conMiles(p.monto_mano_obra);
+  $('items').innerHTML = '';
+  const items = (p.items && p.items.length) ? p.items : [{}, {}, {}];
+  items.forEach(i => agregarRenglon(i.detalle || '', i.importe || ''));
+  calcular();
+  sucio = false;
+}
+
+const enBlanco = () => mostrar({ numero: proximo, fecha: hoyISO(), items: [] });
+
+/* Evita perder lo tipeado al hacer "Nuevo" o abrir otro del historial. */
+function confirmarDescarte(){
+  return !sucio || confirm('Tenés cambios sin guardar. ¿Los descartás?');
+}
+
+/* ===================== acciones ===================== */
+function avisar(texto){
+  const a = $('aviso');
+  a.textContent = texto;
+  a.classList.add('ver');
+  clearTimeout(a._t);
+  a._t = setTimeout(() => a.classList.remove('ver'), 2600);
+}
+
+const cerrarMenu = () => $('acciones').classList.remove('abierto');
+
+async function guardarYPdf(){
+  cerrarMenu();
+  if(bloqueado)  return avisar('Pestaña bloqueada: seguí en la otra');
+  if(modoSeguro) return avisar('Guardado bloqueado: el historial está dañado');
+
+  const p = leerFormulario();
+  if(!p.cliente && !p.items.length) return avisar('Cargá al menos el cliente o un renglón');
+
+  /* Copia del estado previo: si la escritura falla, la memoria no puede
+     quedar diciendo que guardó algo que no está. */
+  const previos    = guardados.slice();
+  const previoNum  = proximo;
+
+  const i = guardados.findIndex(g => g.numero === p.numero);
+  if(i >= 0){
+    guardados[i] = p;
+  }else{
+    guardados.push(p);
+    if(p.numero >= proximo) proximo = p.numero + 1;
+  }
+
+  if(await Guardado.grabar({ guardados, proximo })){
+    sucio = false;
+    avisar('Guardado. Elegí "Guardar como PDF"');
+    /* sin foco en ningún campo: si no, el cursor de texto sale impreso */
+    if(document.activeElement) document.activeElement.blur();
+    setTimeout(() => window.print(), 420);
+  }else{
+    guardados = previos;
+    proximo   = previoNum;
+    avisar('NO se pudo guardar. Descargá el CSV antes de seguir');
+  }
+}
+
+/* ===================== CSV ===================== */
+const celda = v => {
+  const s = String(v ?? '');
+  return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+};
+
+function descargarCSV(){
+  cerrarMenu();
+  if(!guardados.length) return avisar('Todavía no hay presupuestos guardados');
+
+  const cabecera = ['numero_presupuesto','fecha_consulta','nombre_cliente','direccion','telefono',
+                    'vehiculo','patente','detalle','importe',
+                    'subtotal_repuestos','monto_mano_obra','monto_total','creado_en','modificado_en'];
+  const filas = [cabecera.join(';')];
+
+  guardados.forEach(p => {
+    const izq = [p.numero, p.fecha, p.cliente, p.direccion, p.telefono, p.vehiculo, p.patente];
+    const der = [p.subtotal_repuestos, p.monto_mano_obra, p.monto_total, p.creado_en, p.modificado_en];
+    const fila = (detalle, importe) => filas.push([...izq, detalle, importe, ...der].map(celda).join(';'));
+    p.items.forEach(i => fila(i.detalle, i.importe));
+    if(p.monto_mano_obra) fila('Mano de obra', p.monto_mano_obra);
+  });
+
+  const url = URL.createObjectURL(new Blob(['\ufeff' + filas.join('\n')], { type:'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'presupuestos_el_semaforo_' + hoyISO() + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  avisar('CSV descargado');
+}
+
+/* ===================== historial ===================== */
+function abrirHistorial(){
+  cerrarMenu();
+  const lista = $('lista');
+  if(!guardados.length){
+    lista.innerHTML = '<div class="vacio">Todavía no guardaste ningún presupuesto.</div>';
+  }else{
+    lista.innerHTML = '';
+    [...guardados].sort((a, b) => b.numero - a.numero).forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML =
+        '<div><div class="i-n">N° ' + p.numero + ' — ' + (p.cliente || 'sin nombre') + '</div>' +
+        '<div class="i-d">' + [p.vehiculo, p.patente, p.fecha].filter(Boolean).join(' · ') + '</div></div>' +
+        '<div class="i-m">' + enPesos(p.monto_total) + '</div>';
+      div.onclick = () => {
+        if(!confirmarDescarte()) return;
+        mostrar(p);
+        $('modal').classList.remove('abierto');
+        window.scrollTo(0, 0);
+      };
+      lista.appendChild(div);
+    });
+  }
+  $('modal').classList.add('abierto');
+}
+
+/* ===================== conexiones ===================== */
+$('b-menu').onclick   = () => $('acciones').classList.toggle('abierto');
+$('b-pdf').onclick    = guardarYPdf;
+$('b-csv').onclick    = descargarCSV;
+$('b-hist').onclick   = abrirHistorial;
+$('b-nuevo').onclick  = () => {
+  cerrarMenu();
+  if(!confirmarDescarte()) return;
+  enBlanco();
+  window.scrollTo(0, 0);
+  avisar('Presupuesto N° ' + numeroActual);
+};
+$('b-cerrar').onclick = () => $('modal').classList.remove('abierto');
+$('modal').onclick    = e => { if(e.target === $('modal')) $('modal').classList.remove('abierto'); };
+$('add').onclick      = () => { sucio = true; agregarRenglon().querySelector('.det').focus(); };
+$('mo').oninput       = () => { sucio = true; calcular(); };
+$('mo').onblur        = () => { $('mo').value = conMiles(aNumero($('mo').value)); calcular(); };
+$('fecha').onchange   = () => { sucio = true; pintarFecha(); };
+$('patente').onblur   = e => { e.target.value = normalizarPatente(e.target.value); };
+CAMPOS.filter(c => c !== 'fecha').forEach(c => $(c).oninput = () => { sucio = true; });
+
+document.addEventListener('click', e => {
+  if(!$('acciones').contains(e.target)) cerrarMenu();
+});
+window.addEventListener('beforeunload', e => {
+  if(sucio && !bloqueado){ e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ===================== arranque ===================== */
+(async () => {
+  const r = await Guardado.leer();
+  if(r.estado === 'error'){
+    modoSeguro = true;
+    $('alerta-datos').hidden = false;
+  }else if(r.estado === 'ok'){
+    guardados = r.datos.guardados || [];
+    proximo   = r.datos.proximo   || PRIMER_NUMERO;
+  }
+  enBlanco();
+  sondear();
+})();
+</script>
+</body>
+</html>
