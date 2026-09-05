@@ -291,11 +291,11 @@
   </header>
 
   <section class="datos">
-    <div class="campo ancho"><label>Señor</label><input id="cliente" autocomplete="off"></div>
-    <div class="campo ancho"><label>Dirección</label><input id="direccion" autocomplete="off"></div>
-    <div class="campo"><label>Vehículo</label><input id="vehiculo" autocomplete="off"></div>
-    <div class="campo"><label>Patente</label><input id="patente" autocomplete="off" style="text-transform:uppercase"></div>
-    <div class="campo ancho"><label>Teléfono</label><input id="telefono" inputmode="tel" autocomplete="off"></div>
+    <div class="campo ancho"><label for="cliente">Señor</label><input id="cliente" autocomplete="off"></div>
+    <div class="campo ancho"><label for="direccion">Dirección</label><input id="direccion" autocomplete="off"></div>
+    <div class="campo"><label for="vehiculo">Vehículo</label><input id="vehiculo" autocomplete="off"></div>
+    <div class="campo"><label for="patente">Patente</label><input id="patente" autocomplete="off" style="text-transform:uppercase"></div>
+    <div class="campo ancho"><label for="telefono">Teléfono</label><input id="telefono" inputmode="tel" autocomplete="off"></div>
   </section>
 
   <table>
@@ -405,6 +405,7 @@ const COLUMNAS = ['numero_presupuesto','fecha_consulta','nombre_cliente','direcc
                   'vehiculo','patente','detalle','importe',
                   'subtotal_repuestos','monto_mano_obra','monto_total','creado_en','modificado_en'];
 const TEXTO = [false,true,true,true,true,true,true,true,false,false,false,false,true,true];
+const COL_DETALLE = 7;
 const COL_IMPORTE = 8;
 const COLS_NUMERICAS = [9,10,11];
 
@@ -836,7 +837,14 @@ function interpretarCSV(texto){
     for(const c of COLS_NUMERICAS)
       if(!esNum(f[c]))
         return { error:'Línea ' + linea + ': la columna ' + COLUMNAS[c] + ' ("' + f[c] + '") no es un número.' };
-    if(String(f[COL_IMPORTE]).trim() !== '' && !esNum(f[COL_IMPORTE]))
+    /* El importe vacío sólo vale en la fila mínima de un presupuesto sin
+       renglones. Un renglón con detalle y sin importe entraría como 0 sin que
+       nadie se entere: eso se rechaza. */
+    const sinImporte = String(f[COL_IMPORTE]).trim() === '';
+    const sinDetalle = sinApostrofo(String(f[COL_DETALLE])).trim() === '';
+    if(sinImporte && !sinDetalle)
+      return { error:'Línea ' + linea + ': el renglón "' + f[COL_DETALLE] + '" no tiene importe.' };
+    if(!sinImporte && !esNum(f[COL_IMPORTE]))
       return { error:'Línea ' + linea + ': la columna importe ("' + f[COL_IMPORTE] + '") no es un número.' };
 
     const n = aNum(f[0]);

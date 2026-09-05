@@ -44,6 +44,11 @@ herramienta lo bloquea por cuatro lados:
    entraron y cuántos se saltearon por número repetido, y vuelve a calcular el
    máximo.
 
+> **Al restaurar, mandan los renglones.** Los totales se vuelven a calcular
+> sumando los renglones del CSV, no se leen de las columnas de totales. Si
+> alguien edita esas columnas a mano en Excel, esos cambios se pierden al
+> importar. Editá los renglones, no los totales.
+
 **Borrar un presupuesto del historial no libera su número.** Un número usado
 queda quemado para siempre; el siguiente sigue de largo. Es la única forma de
 garantizar que nunca se repita.
