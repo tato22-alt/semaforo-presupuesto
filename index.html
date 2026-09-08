@@ -35,10 +35,14 @@
   }
   input{font-family:inherit;color:inherit}
 
+  /* La hoja es una columna: cabecera, datos, el cuadro de renglones y el total.
+     El cuadro es el que crece (flex:1), así el total queda abajo y la hoja se llena
+     aunque el presupuesto tenga tres renglones — como el talonario de papel, que
+     trae el recuadro grande igual. */
   .hoja{
     max-width:var(--hoja-ancho);margin:0 auto;background:var(--papel);
     border:1px solid #d3d8de;box-shadow:0 2px 14px rgba(20,20,20,.09);
-    padding:18px;
+    padding:18px;display:flex;flex-direction:column;
   }
 
   /* ---------- cabecera ---------- */
@@ -67,7 +71,13 @@
   .campo input:focus{outline:0;background:#fff8e6}
 
   /* ---------- conceptos ---------- */
-  table{width:100%;border-collapse:collapse;margin-top:10px;border:1.5px solid var(--tinta)}
+  /* El recuadro lo dibuja .caja, no la tabla: así se puede estirar hacia abajo
+     sin deformar los renglones. */
+  .caja{
+    border:1.5px solid var(--tinta);margin-top:10px;
+    display:flex;flex-direction:column;
+  }
+  table{width:100%;border-collapse:collapse}
   thead th{
     font-size:9.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--tenue);font-weight:700;
     text-align:left;padding:4px 8px;border-bottom:1.5px solid var(--tinta);background:#f7f8fa;
@@ -84,7 +94,7 @@
   .quitar{width:100%;border:0;background:transparent;color:#c3c9d0;font-size:18px;line-height:1;padding:7px 0;cursor:pointer}
   .quitar:hover{color:var(--rojo)}
   .add{
-    margin-top:8px;width:100%;background:transparent;border:1px dashed var(--linea);
+    margin:8px;background:transparent;border:1px dashed var(--linea);
     color:var(--tenue);font:inherit;font-size:12.5px;font-weight:600;padding:9px;cursor:pointer;
   }
   .add:hover{border-color:var(--naranja);color:var(--naranja)}
@@ -171,7 +181,7 @@
   @media (min-width:1000px){
     :root{--hoja-ancho:940px;--txt-base:16px;--txt-campo:16px;--txt-razon:27px}
     body{padding:26px 20px 110px}
-    .hoja{padding:30px 32px}
+    .hoja{padding:30px 32px;min-height:calc(var(--hoja-ancho) * 1.3)}
     .cab img{height:78px}
     .sub{font-size:12.5px}
     .nro{font-size:20px;padding:3px 13px}
@@ -182,7 +192,7 @@
     .datos{gap:0 34px;padding:14px 0 4px}
     thead th{font-size:11px;padding:7px 11px}
     tbody input,tfoot input,tfoot .r-mo span{padding:11px}
-    table{margin-top:16px}
+    .caja{margin-top:16px;flex:1}
     .add{font-size:14px;padding:12px}
     .tot{max-width:400px;margin-top:16px}
     .fila{font-size:25px;padding:12px 0}
@@ -197,8 +207,8 @@
   /* ---------- impresión ---------- */
   @media print{
     @page{size:A4;margin:14mm}
-    body{background:#fff;padding:0;font-size:12px}
-    .hoja{max-width:none;border:0;box-shadow:none;padding:0}
+    body{background:#fff;padding:0;font-size:13px}
+    .hoja{max-width:none;border:0;box-shadow:none;padding:0;min-height:247mm}
     .acciones,.add,.modal,.aviso,.quitar,th.c-x{display:none!important}
     td.x{display:none}
     tr.vacia{display:none!important}
@@ -209,21 +219,21 @@
     .contacto{color:inherit!important;text-decoration:none!important;padding:0}
 
     .cab{padding-bottom:6px}
-    .cab img{height:46px}
-    .razon{font-size:17px}
+    .cab img{height:54px}
+    .razon{font-size:20px}
     .sub{font-size:8.5px;line-height:1.4}
-    .nro{font-size:15px;padding:2px 8px}
+    .nro{font-size:17px;padding:3px 10px}
     .tipo{font-size:11.5px}
     .datos{padding:6px 0 1px}
     .campo{padding:2px 0 0;border-bottom:1px solid #666}
-    .campo input{font-size:11.5px}
+    .campo input{font-size:13.5px}
     #fecha{display:none}
     #fecha-txt{display:inline-block;width:106px;text-align:center}
-    table{margin-top:8px}
+    .caja{margin-top:8px;flex:1}
     thead th{padding:4px 8px}
-    tbody input,tfoot input,tfoot .r-mo span{padding:5px 10px;font-size:11.5px}
+    tbody input,tfoot input,tfoot .r-mo span{padding:9px 10px;font-size:13.5px}
     td.imp input{padding-right:10px}
-    .tot{margin-top:8px}
+    .tot{margin-top:8px;max-width:380px}
 
     /* si hay segunda hoja, que salga bien */
     thead{display:table-header-group}
@@ -289,20 +299,22 @@
     <div class="campo ancho"><label for="telefono">Teléfono</label><input id="telefono" inputmode="tel" autocomplete="off"></div>
   </section>
 
-  <table>
-    <thead>
-      <tr><th>Detalle</th><th class="c-imp">Importe</th><th class="c-x"></th></tr>
-    </thead>
-    <tbody id="items"></tbody>
-    <tfoot>
-      <tr class="r-mo">
-        <td><span>Mano de obra</span></td>
-        <td class="imp"><input id="mo" inputmode="numeric" placeholder="0"></td>
-        <td class="x"></td>
-      </tr>
-    </tfoot>
-  </table>
-  <button class="add" id="add">+ Agregar renglón</button>
+  <div class="caja">
+    <table>
+      <thead>
+        <tr><th>Detalle</th><th class="c-imp">Importe</th><th class="c-x"></th></tr>
+      </thead>
+      <tbody id="items"></tbody>
+      <tfoot>
+        <tr class="r-mo">
+          <td><span>Mano de obra</span></td>
+          <td class="imp"><input id="mo" inputmode="numeric" placeholder="0"></td>
+          <td class="x"></td>
+        </tr>
+      </tfoot>
+    </table>
+    <button class="add" id="add">+ Agregar renglón</button>
+  </div>
 
   <div class="tot">
     <div class="fila"><span>Total</span><b id="total">$0</b></div>
