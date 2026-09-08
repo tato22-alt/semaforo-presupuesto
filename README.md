@@ -24,10 +24,12 @@ Los usuarios se dan de alta desde el panel de Supabase, no desde esta página.
 El número de cada presupuesto nuevo lo entrega la base, no el navegador. Arranca en
 el **16000** (donde terminó el talonario de papel) y nunca repite ni retrocede.
 
-**Cada vez que se abre la herramienta o se toca "Nuevo presupuesto" se reserva un
-número**, aunque después no se guarde nada. Es la misma garantía que tenía arrancar
-una hoja del talonario de papel: una vez arrancada, esa hoja no vuelve al talonario
-aunque no se use. Por eso la numeración puede tener huecos — es correcto, no un error.
+**El número se asigna recién al guardar.** Hasta ese momento la hoja muestra `N° —`.
+Abrir la herramienta, o empezar uno nuevo y arrepentirse, no gasta ningún número.
+
+Si un guardado falla a mitad de camino, ese número sí queda usado y el siguiente sigue
+de largo. Es a propósito: es la única forma de garantizar que dos presupuestos nunca
+lleven el mismo número. Por eso la numeración puede tener algún hueco.
 
 ## Campos obligatorios
 

@@ -42,11 +42,19 @@ tiene alta de usuarios, eso se hace desde el panel de Supabase.
 
 ## Numeración
 
-Cada vez que se abre la herramienta o se toca "Nuevo presupuesto" se pide un número
-con `fn_proximo_numero_presupuesto()`. **Esa llamada gasta el número aunque después no
-se guarde nada** — es la misma garantía que RF-020/RF-103 documentan para la base: un
-número pedido no se reutiliza nunca, ni recargando la página. Los huecos que deja son
-correctos, no un error.
+El número se pide con `fn_proximo_numero_presupuesto()` **recién al guardar**, no al
+abrir la herramienta ni al empezar un presupuesto en blanco. Hasta entonces la hoja
+muestra `N° —`.
+
+Esto es a propósito y corrige la primera versión, que lo pedía al abrir: como cada
+llamada gasta el número para siempre (RF-020/RF-103), abrir la página tres veces sin
+guardar nada dejaba tres números quemados. La garantía de la base no cambia — un
+número pedido no se reutiliza — pero pedirlo tarde hace que sólo se gasten números
+para presupuestos que de verdad se guardan. Dentro del guardado se pide después del
+cliente y el vehículo, así un fallo en esos pasos tampoco lo gasta.
+
+Un guardado que falla después de pedirlo sí deja el número quemado: eso es correcto y
+es justo lo que RF-020 pide.
 
 ## Guardado — cuatro llamadas, no una transacción
 
@@ -55,7 +63,8 @@ Guardar un presupuesto nuevo hace, en orden:
 1. `POST /rest/v1/clientes` (o `PATCH` si ya existe `id_cliente`, al reeditar).
 2. Buscar `vehiculos` por `patente_norm`; si no existe, `POST`. Si la patente está
    vacía, se guarda sin vehículo.
-3. `POST /rest/v1/trabajos` con el número ya pedido (o `PATCH` si es una reedición).
+3. Pedir el número (sólo si es nuevo) y `POST /rest/v1/trabajos` con él — o `PATCH`
+   si es una reedición, que conserva el número que ya tenía.
 4. Reemplazar `trabajo_items`: `DELETE` de los existentes (si había) + `POST` de los
    actuales.
 

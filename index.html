@@ -99,6 +99,15 @@
   }
   .add:hover{border-color:var(--naranja);color:var(--naranja)}
 
+  /* El talonario de papel trae el cuadro rayado hasta el pie aunque escribas tres
+     renglones. Esto es exactamente eso: líneas dibujadas, no renglones de datos.
+     El período tiene que coincidir con el alto de un renglón real. */
+  .rayado{
+    flex:1;min-height:0;
+    background:repeating-linear-gradient(to bottom,
+      transparent 0, transparent 32px, var(--linea-suave) 32px, var(--linea-suave) 33px);
+  }
+
   /* ---------- total ---------- */
   .tot{margin:10px 0 0 auto;width:100%;max-width:322px}
   .fila{display:flex;justify-content:space-between;align-items:center;gap:14px;
@@ -193,6 +202,8 @@
     thead th{font-size:11px;padding:7px 11px}
     tbody input,tfoot input,tfoot .r-mo span{padding:11px}
     .caja{margin-top:16px;flex:1}
+    .rayado{background:repeating-linear-gradient(to bottom,
+      transparent 0, transparent 38px, var(--linea-suave) 38px, var(--linea-suave) 39px)}
     .add{font-size:14px;padding:12px}
     .tot{max-width:400px;margin-top:16px}
     .fila{font-size:25px;padding:12px 0}
@@ -207,7 +218,7 @@
   /* ---------- impresión ---------- */
   @media print{
     @page{size:A4;margin:14mm}
-    body{background:#fff;padding:0;font-size:13px}
+    body{background:#fff;padding:0;font-size:15px}
     .hoja{max-width:none;border:0;box-shadow:none;padding:0;min-height:247mm}
     .acciones,.add,.modal,.aviso,.quitar,th.c-x{display:none!important}
     td.x{display:none}
@@ -219,21 +230,26 @@
     .contacto{color:inherit!important;text-decoration:none!important;padding:0}
 
     .cab{padding-bottom:6px}
-    .cab img{height:54px}
-    .razon{font-size:20px}
-    .sub{font-size:8.5px;line-height:1.4}
-    .nro{font-size:17px;padding:3px 10px}
-    .tipo{font-size:11.5px}
-    .datos{padding:6px 0 1px}
-    .campo{padding:2px 0 0;border-bottom:1px solid #666}
-    .campo input{font-size:13.5px}
+    .cab img{height:66px}
+    .razon{font-size:25px}
+    .sub{font-size:10px;line-height:1.45}
+    .nro{font-size:21px;padding:4px 12px}
+    .tipo{font-size:14px}
+    .datos{padding:10px 0 2px}
+    .campo{padding:6px 0 2px;border-bottom:1px solid #666}
+    .campo input{font-size:16px}
     #fecha{display:none}
     #fecha-txt{display:inline-block;width:106px;text-align:center}
     .caja{margin-top:8px;flex:1}
-    thead th{padding:4px 8px}
-    tbody input,tfoot input,tfoot .r-mo span{padding:9px 10px;font-size:13.5px}
+    thead th{padding:7px 10px;font-size:11px}
+    tbody input,tfoot input,tfoot .r-mo span{padding:11px 10px;font-size:16px}
     td.imp input{padding-right:10px}
-    .tot{margin-top:8px;max-width:380px}
+    .tot{margin-top:10px;max-width:420px}
+    .fila{font-size:26px;padding:12px 0}
+    .fila span{font-size:15px}
+    .letras{font-size:13px}
+    .rayado{background:repeating-linear-gradient(to bottom,
+      transparent 0, transparent 40px, var(--linea-suave) 40px, var(--linea-suave) 41px)}
 
     /* si hay segunda hoja, que salga bien */
     thead{display:table-header-group}
@@ -314,6 +330,7 @@
       </tfoot>
     </table>
     <button class="add" id="add">+ Agregar renglón</button>
+    <div class="rayado"></div>
   </div>
 
   <div class="tot">
@@ -588,32 +605,38 @@ async function guardarEnBase(p){
   };
 
   let id_trabajo = p.id_trabajo || null;
+  let numero = p.numero;
   if(id_trabajo){
     const r = await api('/rest/v1/trabajos?id_trabajo=eq.' + id_trabajo, {
       method: 'PATCH', body: JSON.stringify(datosTrabajo)
     });
-    if(!r.ok) throw new Error('El presupuesto N° ' + p.numero + ' no se pudo actualizar');
+    if(!r.ok) throw new Error('El presupuesto N° ' + numero + ' no se pudo actualizar');
   }else{
+    /* El número se pide recién acá, no al abrir la herramienta: pedirlo lo gasta
+       para siempre, y abrir la página diez veces no puede costar diez números.
+       Pedirlo después del cliente y el vehículo también evita gastarlo si esos
+       pasos fallan. */
+    numero = await pedirProximoNumero();
     const r = await api('/rest/v1/trabajos', {
       method: 'POST', headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({ ...datosTrabajo, numero_presupuesto: p.numero, origen_carga: 'presupuesto_web' })
+      body: JSON.stringify({ ...datosTrabajo, numero_presupuesto: numero, origen_carga: 'presupuesto_web' })
     });
-    if(!r.ok) throw new Error('El presupuesto N° ' + p.numero + ' no se pudo guardar');
+    if(!r.ok) throw new Error('El presupuesto N° ' + numero + ' no se pudo guardar');
     const filas = await leerJSON(r);
     id_trabajo = filas && filas[0] && filas[0].id_trabajo;
   }
 
   if(p.id_trabajo){
     const del = await api('/rest/v1/trabajo_items?id_trabajo=eq.' + id_trabajo, { method: 'DELETE' });
-    if(!del.ok) throw new Error('El N° ' + p.numero + ' se guardó pero los renglones anteriores no se pudieron reemplazar');
+    if(!del.ok) throw new Error('El N° ' + numero + ' se guardó pero los renglones anteriores no se pudieron reemplazar');
   }
   if(p.items.length){
     const filas = p.items.map((it, i) => ({ id_trabajo, orden: i, detalle: it.detalle, importe: it.importe }));
     const r = await api('/rest/v1/trabajo_items', { method: 'POST', body: JSON.stringify(filas) });
-    if(!r.ok) throw new Error('El N° ' + p.numero + ' se guardó pero los renglones no. Reabrilo del historial y guardá de nuevo');
+    if(!r.ok) throw new Error('El N° ' + numero + ' se guardó pero los renglones no. Reabrilo del historial y guardá de nuevo');
   }
 
-  return { id_trabajo, id_cliente, id_vehiculo };
+  return { id_trabajo, id_cliente, id_vehiculo, numero };
 }
 
 /* ===================== renglones ===================== */
@@ -725,11 +748,10 @@ function mostrar(p){
   sucio = false;
 }
 
-/* Cada vez que se abre un presupuesto en blanco se pide un número nuevo — y ese
-   número queda gastado aunque no se termine guardando (ver CONEXION-BASE.md). */
-async function irANuevo(){
-  const numero = await pedirProximoNumero();
-  mostrar({ numero, fecha: hoyISO(), items: [] });
+/* Un presupuesto en blanco no tiene número todavía: se pide al guardar. Abrir la
+   herramienta o empezar uno nuevo no gasta ninguno (ver CONEXION-BASE.md). */
+function irANuevo(){
+  mostrar({ numero: null, fecha: hoyISO(), items: [] });
 }
 
 /* Evita perder lo tipeado al hacer "Nuevo" o abrir otro del historial. */
@@ -764,8 +786,10 @@ async function guardarYPdf(){
     idTrabajoActual  = resultado.id_trabajo;
     idClienteActual  = resultado.id_cliente;
     idVehiculoActual = resultado.id_vehiculo;
+    numeroActual     = resultado.numero;
+    $('nro').textContent = numeroActual;   // tiene que estar en pantalla antes de imprimir
     sucio = false;
-    avisar('Guardado. Elegí "Guardar como PDF"');
+    avisar('Guardado con el N° ' + numeroActual + '. Elegí "Guardar como PDF"');
     if(document.activeElement) document.activeElement.blur();
     setTimeout(() => window.print(), 420);
   }catch(e){
@@ -919,17 +943,12 @@ $('b-menu').onclick  = () => $('acciones').classList.toggle('abierto');
 $('b-pdf').onclick   = guardarYPdf;
 $('b-csv').onclick   = descargarCSV;
 $('b-hist').onclick  = abrirHistorial;
-$('b-nuevo').onclick = async () => {
+$('b-nuevo').onclick = () => {
   cerrarMenu();
   if(!confirmarDescarte()) return;
-  try{
-    await irANuevo();
-    window.scrollTo(0, 0);
-    avisar('Presupuesto N° ' + numeroActual);
-  }catch(e){
-    if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
-    avisar('No se pudo pedir el número. Revisá la conexión');
-  }
+  irANuevo();
+  window.scrollTo(0, 0);
+  avisar('Presupuesto en blanco. El número se asigna al guardar');
 };
 $('b-salir').onclick = () => {
   cerrarMenu();
@@ -966,7 +985,10 @@ async function entrarALaApp(){
   $('carga').classList.add('abierto');
   $('app').hidden = true;
   try{
-    await irANuevo();
+    /* Confirma que la sesión sirve de verdad, sin gastar ningún número. */
+    const r = await api('/rest/v1/vw_presupuestos?select=id_trabajo&limit=1');
+    if(!r.ok) throw new Error('No se pudo conectar con la base');
+    irANuevo();
     $('carga').classList.remove('abierto');
     $('app').hidden = false;
     window.scrollTo(0, 0);
