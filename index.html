@@ -119,6 +119,7 @@
   .menu button:hover{background:#f7f8fa}
   .menu button.principal{font-weight:700;color:var(--verde)}
   .menu button.inerte{color:var(--tenue);cursor:progress}
+  .menu button.salir{color:var(--rojo)}
 
   /* ---------- historial ---------- */
   .modal{position:fixed;inset:0;background:rgba(20,20,20,.5);display:none;z-index:60;padding:14px}
@@ -135,58 +136,36 @@
   .i-n{font-weight:700;font-size:14px}
   .i-d{font-size:12px;color:var(--tenue);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .i-m{font-weight:700;font-variant-numeric:tabular-nums;font-size:14px;white-space:nowrap}
-  .i-x{border:0;background:transparent;color:#c3c9d0;font-size:19px;line-height:1;padding:0 2px;cursor:pointer;flex:none}
-  .i-x:hover{color:var(--rojo)}
   .vacio{padding:28px 16px;text-align:center;color:var(--tenue);font-size:13px}
 
-  /* ---------- compuerta de arranque ---------- */
-  .compuerta.abierto{align-items:center}
-  .compuerta .panel{max-width:460px}
+  /* ---------- modales chicos: login, carga ---------- */
+  .modal.centrado.abierto{align-items:center}
   .p-cuerpo{padding:16px;overflow-y:auto}
-  .c-txt{margin:0 0 14px;font-size:13.5px;line-height:1.5;color:var(--tenue)}
-  .c-opcion{
-    display:block;width:100%;text-align:left;border:1px solid var(--linea);background:#fff;
-    font:inherit;padding:13px 14px;margin-bottom:10px;cursor:pointer;color:var(--tinta);
-  }
-  .c-opcion:hover{border-color:var(--naranja)}
-  .c-opcion b{display:block;font-size:14px;margin-bottom:3px}
-  .c-opcion span{font-size:12.5px;color:var(--tenue)}
   .p-cuerpo label{display:block;font-size:10px;letter-spacing:.7px;text-transform:uppercase;
                   color:var(--tenue);font-weight:700;margin-bottom:5px}
-  #c-ultimo{
+  .entrada{
     width:100%;border:1px solid var(--linea);background:transparent;font:inherit;
-    font-size:17px;font-weight:700;padding:9px;font-variant-numeric:tabular-nums;
+    font-size:15px;padding:9px;margin-bottom:14px;
   }
-  #c-ultimo:focus{outline:0;border-color:var(--naranja);background:#fff8e6}
-  .c-ayuda{margin:10px 0 0;font-size:12px;line-height:1.5;color:var(--tenue)}
-  .c-error{margin:10px 0 0;font-size:12.5px;color:var(--rojo);font-weight:600}
-  .c-aviso{margin:0 0 14px;font-size:12.5px;color:var(--rojo);font-weight:600}
-  .c-prox{font-variant-numeric:tabular-nums}
-  .c-botones{display:flex;gap:9px;margin-top:16px}
+  .entrada:focus{outline:0;border-color:var(--naranja);background:#fff8e6}
+  .c-error{margin:-4px 0 14px;font-size:12.5px;color:var(--rojo);font-weight:600}
+  .c-botones{display:flex;gap:9px;margin-top:2px}
   .c-botones button{
     flex:1;border:1px solid var(--linea);background:#fff;font:inherit;font-size:14px;
     padding:11px;cursor:pointer;color:var(--tinta);
   }
   .c-botones button.principal{background:var(--tinta);border-color:var(--tinta);color:#fff;font-weight:700}
+  .c-botones button:disabled{opacity:.55;cursor:progress}
+  .carga{padding:36px 16px;text-align:center;color:var(--tenue);font-size:14px}
   [hidden]{display:none!important}
 
   /* ---------- avisos ---------- */
   .aviso{
     position:fixed;left:50%;transform:translateX(-50%);bottom:82px;background:var(--tinta);color:#fff;
     padding:10px 18px;font-size:13px;z-index:70;opacity:0;pointer-events:none;transition:opacity .2s;
+    max-width:88vw;text-align:center;
   }
   .aviso.ver{opacity:1}
-  .alerta{
-    max-width:var(--hoja-ancho);margin:0 auto 10px;padding:11px 13px;font-size:13px;line-height:1.5;
-    background:#fdecef;border-left:4px solid var(--rojo);color:#8c0f2c;
-  }
-  .alerta[hidden]{display:none}
-  .alerta b{display:block;margin-bottom:2px}
-  .b-rescate{
-    display:block;margin-top:9px;border:1px solid #8c0f2c;background:transparent;color:#8c0f2c;
-    font:inherit;font-size:12.5px;font-weight:600;padding:8px 12px;cursor:pointer;
-  }
-  .b-rescate:hover{background:#8c0f2c;color:#fff}
 
   /* ---------- escritorio: todo más grande ---------- */
   @media (min-width:1000px){
@@ -220,7 +199,7 @@
     @page{size:A4;margin:14mm}
     body{background:#fff;padding:0;font-size:12px}
     .hoja{max-width:none;border:0;box-shadow:none;padding:0}
-    .acciones,.add,.modal,.aviso,.alerta,.quitar,th.c-x{display:none!important}
+    .acciones,.add,.modal,.aviso,.quitar,th.c-x{display:none!important}
     td.x{display:none}
     tr.vacia{display:none!important}
     input{background:transparent!important}
@@ -257,17 +236,29 @@
 </head>
 <body>
 
-<div class="alerta" id="alerta-pestana" hidden>
-  <b>Esta pestaña está bloqueada</b>
-  Ya tenés el presupuesto abierto en otra pestaña. Si guardás desde las dos se repiten
-  los números y se pierde un presupuesto. Cerrá ésta y seguí en la otra.
+<div class="modal centrado abierto" id="carga">
+  <div class="panel" style="max-width:300px">
+    <div class="carga" id="carga-txt">Conectando…</div>
+  </div>
 </div>
 
-<div class="alerta" id="alerta-datos" hidden>
-  <b>No se pudo leer el historial</b>
-  <span id="texto-datos"></span>
-  <button class="b-rescate" id="b-rescate" hidden>Descargar copia de los datos (.txt)</button>
+<div class="modal centrado" id="login">
+  <div class="panel" style="max-width:360px">
+    <div class="p-cab"><h2>Ingresar</h2></div>
+    <div class="p-cuerpo">
+      <label for="login-email">Email</label>
+      <input class="entrada" id="login-email" type="email" autocomplete="username" inputmode="email">
+      <label for="login-pass">Contraseña</label>
+      <input class="entrada" id="login-pass" type="password" autocomplete="current-password">
+      <p class="c-error" id="login-error" hidden></p>
+      <div class="c-botones">
+        <button id="login-entrar" class="principal">Ingresar</button>
+      </div>
+    </div>
+  </div>
 </div>
+
+<div id="app" hidden>
 
 <div class="hoja">
   <header class="cab">
@@ -325,11 +316,10 @@
     <button id="b-nuevo">Nuevo presupuesto</button>
     <button id="b-hist">Ver historial</button>
     <button id="b-csv">Descargar CSV</button>
-    <button id="b-restaurar">Restaurar desde CSV</button>
+    <button id="b-salir" class="salir">Cerrar sesión</button>
   </div>
   <button class="disparador" id="b-menu">Acciones <span class="flecha">▲</span></button>
 </nav>
-<input type="file" id="archivo" accept=".csv,text/csv" hidden>
 
 <div class="modal" id="modal">
   <div class="panel">
@@ -341,50 +331,7 @@
   </div>
 </div>
 
-<div class="modal compuerta" id="compuerta">
-  <div class="panel">
-    <div class="p-cab"><h2>Antes de empezar</h2></div>
-    <div class="p-cuerpo">
-      <div id="c-opciones">
-        <p class="c-txt">
-          La numeración se guarda en este navegador. Para no repetir números,
-          decinos desde dónde tiene que arrancar.
-        </p>
-        <button class="c-opcion" id="c-primera">
-          <b>Es la primera vez que se usa</b>
-          <span>Arranca en el N° 16000.</span>
-        </button>
-        <button class="c-opcion" id="c-otro">
-          <b>Ya se usó en otro equipo o se borraron los datos</b>
-          <span>Hay que escribir el último número emitido.</span>
-        </button>
-      </div>
-
-      <div id="c-numero" hidden>
-        <label for="c-ultimo">Último número emitido</label>
-        <input id="c-ultimo" inputmode="numeric" autocomplete="off">
-        <p class="c-ayuda">
-          Si tenés un CSV de respaldo, poné el último número que recuerdes y después
-          usá Restaurar desde CSV desde el menú Acciones.
-        </p>
-        <p class="c-error" id="c-error" hidden></p>
-        <div class="c-botones">
-          <button id="c-volver">Volver</button>
-          <button id="c-seguir" class="principal">Continuar</button>
-        </div>
-      </div>
-
-      <div id="c-confirmar" hidden>
-        <p class="c-txt">El próximo presupuesto será el <b class="c-prox" id="c-proximo">—</b>.</p>
-        <p class="c-aviso">Esto no se puede cambiar después.</p>
-        <div class="c-botones">
-          <button id="c-corregir">Corregir</button>
-          <button id="c-aceptar" class="principal">Confirmar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+</div><!-- #app -->
 
 <div class="aviso" id="aviso"></div>
 
@@ -392,22 +339,18 @@
 "use strict";
 
 /* ===================== configuración ===================== */
-const PRIMER_NUMERO = 16000;
-const MAX_NUMERO    = 9999999;
-const CLAVE  = 'semaforo-presupuestos';
-const CANAL  = 'semaforo-presupuesto';
+const SUPABASE_URL = 'https://osslhkvdclrbukjqwpnt.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_MV1IZ770uuRM2bUmZqmuWA_mdicKzXw';
+const CLAVE_SESION = 'semaforo-sesion';
 const CAMPOS = ['fecha','cliente','direccion','vehiculo','patente','telefono'];
-const ESPERA_SONDEO = 700;
+const MAX_HISTORIAL = 200;
 
-/* Columnas del CSV, en orden. TEXTO marca cuáles se escapan como texto:
+/* Columnas del CSV de respaldo, en orden. TEXTO marca cuáles se escapan como texto:
    una celda de texto que arranque con = + - @ la toma Excel como fórmula. */
 const COLUMNAS = ['numero_presupuesto','fecha_consulta','nombre_cliente','direccion','telefono',
                   'vehiculo','patente','detalle','importe',
                   'subtotal_repuestos','monto_mano_obra','monto_total','creado_en','modificado_en'];
 const TEXTO = [false,true,true,true,true,true,true,true,false,false,false,false,true,true];
-const COL_DETALLE = 7;
-const COL_IMPORTE = 8;
-const COLS_NUMERICAS = [9,10,11];
 
 const $ = id => document.getElementById(id);
 
@@ -421,7 +364,12 @@ const enPesos   = n => '$' + Math.round(n || 0).toLocaleString('es-AR');
 const capitalizar = t => t ? t[0].toUpperCase() + t.slice(1) : t;
 const normalizarPatente = v => String(v || '').toUpperCase().replace(/[\s.-]/g, '');
 const hoyISO = () => new Date().toISOString().slice(0, 10);
-const esEntero = v => typeof v === 'number' && Number.isInteger(v);
+
+/* RF-022: no bloquea, sólo avisa. Misma regla que fn_es_formato_patente_valido en la base. */
+const patenteFormatoValido = v => {
+  const n = normalizarPatente(v);
+  return /^[A-Z]{3}[0-9]{3}$/.test(n) || /^[A-Z]{2}[0-9]{3}[A-Z]{2}$/.test(n);
+};
 
 /* ===================== número a letras ===================== */
 const U = ['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve'];
@@ -458,105 +406,202 @@ function enLetras(n){
   return t;
 }
 
-/* ===================== guardado =====================
-   Cuatro estados, y la diferencia entre ellos importa:
-     vacio       -> nunca se usó: hay que preguntar desde qué número arranca
-     ok          -> se pudo leer (formato nuevo, o el viejo que se migra)
-     danado      -> hay algo escrito pero no se entiende: NO tocarlo, se rescata
-     inaccesible -> el navegador no deja leer: no hay nada que rescatar
-   Si un dato dañado se tomara por vacío, el primer guardado pisaría todo el
-   historial sin que nadie se entere. */
-
-/* Devuelve la forma normalizada, o null si no se entiende.
-   Acepta el formato viejo {guardados, proximo} y lo migra. */
-function normalizar(d){
-  if(!d || typeof d !== 'object' || !Array.isArray(d.guardados)) return null;
-  const mayor = d.guardados.reduce(
-    (m, p) => (p && esEntero(p.numero) && p.numero > m) ? p.numero : m, PRIMER_NUMERO - 1);
-  if(esEntero(d.maxEmitido)) return { guardados: d.guardados, maxEmitido: Math.max(d.maxEmitido, mayor) };
-  if(esEntero(d.proximo))    return { guardados: d.guardados, maxEmitido: Math.max(d.proximo - 1, mayor) };
-  return null;
-}
-
-const Almacen = {
-  crudo(){
-    try{ return localStorage.getItem(CLAVE); }
-    catch(e){ return undefined; }          // undefined = ni se pudo leer
-  },
+/* ===================== sesión =====================
+   Login contra Supabase Auth. El token se guarda en este navegador para no pedir
+   contraseña en cada visita, pero los datos (historial, numeración) no viven acá:
+   viven en la base, así que cambiar de equipo o de navegador no pierde nada. */
+const Sesion = {
   leer(){
-    const bruto = this.crudo();
-    if(bruto === undefined) return { estado:'inaccesible' };
-    if(!bruto)              return { estado:'vacio' };
-    let d;
-    try{ d = JSON.parse(bruto); }
-    catch(e){ return { estado:'danado', bruto }; }
-    const datos = normalizar(d);
-    return datos ? { estado:'ok', datos } : { estado:'danado', bruto };
+    try{
+      const s = JSON.parse(localStorage.getItem(CLAVE_SESION));
+      return (s && s.access_token && s.refresh_token) ? s : null;
+    }catch(e){ return null; }
   },
-  grabar(datos){
-    try{ localStorage.setItem(CLAVE, JSON.stringify(datos)); return true; }
-    catch(e){ return false; }
-  }
+  grabar(s){ try{ localStorage.setItem(CLAVE_SESION, JSON.stringify(s)); }catch(e){} },
+  borrar(){ try{ localStorage.removeItem(CLAVE_SESION); }catch(e){} }
 };
 
-/* ===================== estado ===================== */
-let guardados    = [];
-let maxEmitido   = PRIMER_NUMERO - 1;  // máximo emitido histórico: sólo sube
-let inicializado = false;              // ya se eligió desde qué número arranca
-let numeroActual = PRIMER_NUMERO;
-let creadoEn     = null;               // se conserva al reabrir del historial
-let sucio        = false;              // hay cambios sin guardar
-let modoSeguro   = false;              // historial ilegible: no se guarda nada
-let brutoDanado  = null;               // copia cruda para rescatar
+let sesionActual = Sesion.leer();
 
-const proximo   = () => maxEmitido + 1;
-const persistir = () => Almacen.grabar({ version:2, inicializado:true, maxEmitido, guardados });
-
-/* ===================== una sola pestaña a la vez =====================
-   Dos pestañas leen el mismo próximo número y guardan con él; como el
-   guardado busca por número, la segunda pisaría a la primera en silencio.
-   Mientras el saludo no resuelve el estado es 'verificando' y no se guarda:
-   el hueco de espera era justo la ventana por la que se colaba el duplicado. */
-const MI_ID = Math.random().toString(36).slice(2);
-let canal = null;
-let estadoPestana = 'verificando';
-let sondeo = 0;
-
-function fijarEstadoPestana(e){
-  estadoPestana = e;
-  $('alerta-pestana').hidden = (e !== 'bloqueado');
-  const b = $('b-pdf'), verificando = (e === 'verificando');
-  b.textContent = verificando ? 'Verificando…' : 'Guardar y hacer PDF';
-  b.classList.toggle('inerte', verificando);
+async function pedirAuth(ruta, cuerpo){
+  const r = await fetch(SUPABASE_URL + ruta, {
+    method: 'POST',
+    headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(cuerpo)
+  });
+  let datos = null;
+  try{ datos = await r.json(); }catch(e){}
+  return { ok: r.ok, status: r.status, datos };
 }
 
-function sondear(){
-  if(!canal) return fijarEstadoPestana('libre');   // sin BroadcastChannel no hay nada que verificar
-  fijarEstadoPestana('verificando');
-  const marca = ++sondeo;
-  canal.postMessage({ tipo:'hola', id: MI_ID });
-  setTimeout(() => {
-    if(marca === sondeo && estadoPestana === 'verificando') fijarEstadoPestana('libre');
-  }, ESPERA_SONDEO);
-}
-
-if(typeof BroadcastChannel !== 'undefined'){
-  canal = new BroadcastChannel(CANAL);
-  canal.onmessage = ({ data }) => {
-    if(!data) return;
-    if(data.tipo === 'hola' && data.id !== MI_ID && estadoPestana !== 'bloqueado'){
-      canal.postMessage({ tipo:'ocupado', para: data.id });
-    }else if(data.tipo === 'ocupado' && data.para === MI_ID){
-      sondeo++;                                    // anula el temporizador pendiente
-      fijarEstadoPestana('bloqueado');
-    }else if(data.tipo === 'me-voy' && estadoPestana === 'bloqueado'){
-      sondear();
-    }
+async function iniciarSesion(email, password){
+  const r = await pedirAuth('/auth/v1/token?grant_type=password', { email, password });
+  if(!r.ok) return { error: (r.datos && (r.datos.error_description || r.datos.msg)) || 'No se pudo iniciar sesión' };
+  const s = {
+    access_token: r.datos.access_token,
+    refresh_token: r.datos.refresh_token,
+    expira_en: Date.now() + (r.datos.expires_in * 1000)
   };
-  const avisarSalida = () => { if(estadoPestana !== 'bloqueado') canal.postMessage({ tipo:'me-voy' }); };
-  window.addEventListener('pagehide', avisarSalida);      // dispara donde beforeunload no
-  window.addEventListener('beforeunload', avisarSalida);
-  setInterval(() => { if(estadoPestana === 'bloqueado') sondear(); }, 5000);
+  sesionActual = s;
+  Sesion.grabar(s);
+  return { ok: true };
+}
+
+async function refrescarSesion(){
+  if(!sesionActual) return false;
+  const r = await pedirAuth('/auth/v1/token?grant_type=refresh_token', { refresh_token: sesionActual.refresh_token });
+  if(!r.ok){ cerrarSesion(); return false; }
+  sesionActual = {
+    access_token: r.datos.access_token,
+    refresh_token: r.datos.refresh_token,
+    expira_en: Date.now() + (r.datos.expires_in * 1000)
+  };
+  Sesion.grabar(sesionActual);
+  return true;
+}
+
+function cerrarSesion(){
+  sesionActual = null;
+  Sesion.borrar();
+}
+
+/* Une apikey + token a cada llamada, y renueva sola si está por vencer.
+   Lanza si no hay forma de autenticar: quien llama decide qué avisar. */
+async function api(ruta, opciones = {}){
+  if(!sesionActual) throw new Error('sin-sesion');
+  if(Date.now() > sesionActual.expira_en - 60000){
+    if(!(await refrescarSesion())) throw new Error('sin-sesion');
+  }
+  const r = await fetch(SUPABASE_URL + ruta, {
+    ...opciones,
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: 'Bearer ' + sesionActual.access_token,
+      'Content-Type': 'application/json',
+      ...(opciones.headers || {})
+    }
+  });
+  if(r.status === 401){ cerrarSesion(); throw new Error('sin-sesion'); }
+  return r;
+}
+
+async function leerJSON(r){
+  try{ return await r.json(); }catch(e){ return null; }
+}
+
+/* ===================== base de datos ===================== */
+async function pedirProximoNumero(){
+  const r = await api('/rest/v1/rpc/fn_proximo_numero_presupuesto', { method: 'POST', body: '{}' });
+  if(!r.ok) throw new Error('No se pudo pedir el número de presupuesto');
+  return await leerJSON(r);
+}
+
+async function pedirHistorial(){
+  const r = await api('/rest/v1/vw_presupuestos?select=id_trabajo,numero_presupuesto,fecha_presupuesto,' +
+    'cliente_actual,txt_cliente,patente_norm,txt_vehiculo,monto_total,id_cliente,id_vehiculo' +
+    '&order=numero_presupuesto.desc&limit=' + MAX_HISTORIAL);
+  if(!r.ok) throw new Error('No se pudo leer el historial');
+  return await leerJSON(r) || [];
+}
+
+async function pedirTrabajo(id_trabajo){
+  const r = await api('/rest/v1/trabajos?id_trabajo=eq.' + id_trabajo +
+    '&select=*,trabajo_items(orden,detalle,importe)');
+  if(!r.ok) throw new Error('No se pudo abrir ese presupuesto');
+  const filas = await leerJSON(r);
+  return (filas && filas[0]) || null;
+}
+
+function trabajoAFormulario(t){
+  const items = (t.trabajo_items || [])
+    .slice()
+    .sort((a, b) => a.orden - b.orden)
+    .map(i => ({ detalle: i.detalle || '', importe: i.importe || 0 }));
+  return {
+    id_trabajo: t.id_trabajo, id_cliente: t.id_cliente, id_vehiculo: t.id_vehiculo,
+    numero: t.numero_presupuesto, fecha: t.fecha_presupuesto || '',
+    cliente: t.txt_cliente || '', direccion: t.txt_direccion || '',
+    telefono: t.txt_telefono || '', vehiculo: t.txt_vehiculo || '', patente: t.txt_patente || '',
+    monto_mano_obra: t.monto_mano_obra || 0, items, creado_en: t.creado_en
+  };
+}
+
+/* Cuatro llamadas separadas, no una transacción — ver CONEXION-BASE.md, sección
+   "Guardado". Si un paso falla después de que otro ya escribió, no hay rollback:
+   un cliente o vehículo de más es inofensivo; un presupuesto sin renglones se
+   recupera reabriéndolo. Cada error dice en qué paso se cortó. */
+async function guardarEnBase(p){
+  let id_cliente = p.id_cliente || null;
+  if(id_cliente){
+    const r = await api('/rest/v1/clientes?id_cliente=eq.' + id_cliente, {
+      method: 'PATCH',
+      body: JSON.stringify({ nombre: p.cliente, telefono: p.telefono || null, direccion: p.direccion || null })
+    });
+    if(!r.ok) throw new Error('No se pudo actualizar el cliente');
+  }else{
+    const r = await api('/rest/v1/clientes', {
+      method: 'POST', headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ nombre: p.cliente, telefono: p.telefono || null, direccion: p.direccion || null })
+    });
+    if(!r.ok) throw new Error('No se pudo crear el cliente');
+    const filas = await leerJSON(r);
+    id_cliente = filas && filas[0] && filas[0].id_cliente;
+  }
+
+  let id_vehiculo = p.id_vehiculo || null;
+  if(p.patente){
+    const buscar = await api('/rest/v1/vehiculos?patente_norm=eq.' + encodeURIComponent(p.patente) + '&select=id_vehiculo');
+    if(!buscar.ok) throw new Error('No se pudo revisar el vehículo');
+    const encontrados = await leerJSON(buscar) || [];
+    if(encontrados.length){
+      id_vehiculo = encontrados[0].id_vehiculo;
+    }else{
+      const r = await api('/rest/v1/vehiculos', {
+        method: 'POST', headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({ patente: p.patente, descripcion: p.vehiculo || null, id_cliente_ultimo: id_cliente })
+      });
+      if(!r.ok) throw new Error('No se pudo crear el vehículo');
+      const filas = await leerJSON(r);
+      id_vehiculo = filas && filas[0] && filas[0].id_vehiculo;
+    }
+  }else{
+    id_vehiculo = null;
+  }
+
+  const datosTrabajo = {
+    id_cliente, id_vehiculo, fecha_presupuesto: p.fecha || null,
+    txt_cliente: p.cliente, txt_direccion: p.direccion || null, txt_telefono: p.telefono || null,
+    txt_vehiculo: p.vehiculo || null, txt_patente: p.patente || null,
+    monto_mano_obra: p.monto_mano_obra, modificado_en: new Date().toISOString()
+  };
+
+  let id_trabajo = p.id_trabajo || null;
+  if(id_trabajo){
+    const r = await api('/rest/v1/trabajos?id_trabajo=eq.' + id_trabajo, {
+      method: 'PATCH', body: JSON.stringify(datosTrabajo)
+    });
+    if(!r.ok) throw new Error('El presupuesto N° ' + p.numero + ' no se pudo actualizar');
+  }else{
+    const r = await api('/rest/v1/trabajos', {
+      method: 'POST', headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ ...datosTrabajo, numero_presupuesto: p.numero, origen_carga: 'presupuesto_web' })
+    });
+    if(!r.ok) throw new Error('El presupuesto N° ' + p.numero + ' no se pudo guardar');
+    const filas = await leerJSON(r);
+    id_trabajo = filas && filas[0] && filas[0].id_trabajo;
+  }
+
+  if(p.id_trabajo){
+    const del = await api('/rest/v1/trabajo_items?id_trabajo=eq.' + id_trabajo, { method: 'DELETE' });
+    if(!del.ok) throw new Error('El N° ' + p.numero + ' se guardó pero los renglones anteriores no se pudieron reemplazar');
+  }
+  if(p.items.length){
+    const filas = p.items.map((it, i) => ({ id_trabajo, orden: i, detalle: it.detalle, importe: it.importe }));
+    const r = await api('/rest/v1/trabajo_items', { method: 'POST', body: JSON.stringify(filas) });
+    if(!r.ok) throw new Error('El N° ' + p.numero + ' se guardó pero los renglones no. Reabrilo del historial y guardá de nuevo');
+  }
+
+  return { id_trabajo, id_cliente, id_vehiculo };
 }
 
 /* ===================== renglones ===================== */
@@ -612,6 +657,13 @@ function pintarFecha(){
 }
 
 /* ===================== formulario ===================== */
+let idTrabajoActual = null;
+let idClienteActual = null;
+let idVehiculoActual = null;
+let numeroActual = null;
+let creadoEn = null;
+let sucio = false;
+
 function leerFormulario(){
   const items = renglones()
     .map(tr => ({
@@ -620,7 +672,7 @@ function leerFormulario(){
     }))
     .filter(i => i.detalle || i.importe);
 
-  const p = { numero: numeroActual, items };
+  const p = { numero: numeroActual, items, id_trabajo: idTrabajoActual, id_cliente: idClienteActual, id_vehiculo: idVehiculoActual };
   CAMPOS.forEach(c => p[c] = $(c).value.trim());
   p.patente            = normalizarPatente(p.patente);
   p.subtotal_repuestos = items.reduce((s, i) => s + i.importe, 0);
@@ -633,10 +685,24 @@ function leerFormulario(){
   return p;
 }
 
+/* RF-024: la base lo permite, esta página lo exige antes de guardar. */
+function camposFaltantes(p){
+  const faltan = [];
+  if(!p.fecha)                 faltan.push('la fecha');
+  if(!p.cliente)                faltan.push('el nombre del cliente');
+  if(!p.direccion)              faltan.push('la dirección');
+  if(!p.telefono)               faltan.push('el teléfono');
+  if(!p.monto_mano_obra)        faltan.push('la mano de obra');
+  return faltan;
+}
+
 function mostrar(p){
-  numeroActual = p.numero;
-  creadoEn     = p.creado_en || null;
-  $('nro').textContent = inicializado ? p.numero : '—';
+  numeroActual   = p.numero;
+  idTrabajoActual  = p.id_trabajo || null;
+  idClienteActual  = p.id_cliente || null;
+  idVehiculoActual = p.id_vehiculo || null;
+  creadoEn = p.creado_en || null;
+  $('nro').textContent = p.numero != null ? p.numero : '—';
   CAMPOS.forEach(c => $(c).value = p[c] || '');
   pintarFecha();
   $('mo').value = conMiles(p.monto_mano_obra);
@@ -647,40 +713,16 @@ function mostrar(p){
   sucio = false;
 }
 
-const enBlanco = () => mostrar({ numero: proximo(), fecha: hoyISO(), items: [] });
+/* Cada vez que se abre un presupuesto en blanco se pide un número nuevo — y ese
+   número queda gastado aunque no se termine guardando (ver CONEXION-BASE.md). */
+async function irANuevo(){
+  const numero = await pedirProximoNumero();
+  mostrar({ numero, fecha: hoyISO(), items: [] });
+}
 
 /* Evita perder lo tipeado al hacer "Nuevo" o abrir otro del historial. */
 function confirmarDescarte(){
   return !sucio || confirm('Tenés cambios sin guardar. ¿Los descartás?');
-}
-
-/* ===================== compuerta de arranque =====================
-   Con el almacenamiento vacío no se asume ningún número: hasta que no se
-   elija, no se puede guardar. Elegido una vez, no se vuelve a preguntar
-   ni hay forma de cambiarlo desde la interfaz. */
-const PASOS = ['c-opciones','c-numero','c-confirmar'];
-const verPaso = cual => PASOS.forEach(p => $(p).hidden = (p !== cual));
-
-function abrirCompuerta(){
-  verPaso('c-opciones');
-  $('compuerta').classList.add('abierto');
-}
-
-function cerrarCompuerta(nuevoMax){
-  maxEmitido   = nuevoMax;
-  inicializado = true;
-  if(!persistir()) return avisar('NO se pudo guardar la configuración. Revisá los permisos del navegador');
-  $('compuerta').classList.remove('abierto');
-  enBlanco();
-  avisar('Presupuesto N° ' + numeroActual);
-}
-
-function validarUltimo(){
-  const t = $('c-ultimo').value.trim();
-  if(!/^\d+$/.test(t))                    return 'Escribí sólo números, sin puntos ni espacios.';
-  const n = parseInt(t, 10);
-  if(n <= 0 || n > MAX_NUMERO)            return 'Tiene que ser un número entre 1 y ' + MAX_NUMERO + '.';
-  return null;
 }
 
 /* ===================== acciones ===================== */
@@ -689,61 +731,43 @@ function avisar(texto){
   a.textContent = texto;
   a.classList.add('ver');
   clearTimeout(a._t);
-  a._t = setTimeout(() => a.classList.remove('ver'), 2600);
+  a._t = setTimeout(() => a.classList.remove('ver'), 3200);
 }
 
 const cerrarMenu = () => $('acciones').classList.remove('abierto');
 
-/* Un único lugar que decide si se puede escribir. Devuelve el motivo, o null. */
-function impedimento(){
-  if(modoSeguro)                      return 'Guardado bloqueado: los datos de este navegador están dañados';
-  if(!inicializado)                   return 'Elegí primero desde qué número arranca';
-  if(estadoPestana === 'bloqueado')   return 'Pestaña bloqueada: seguí en la otra';
-  if(estadoPestana === 'verificando') return 'Verificando si hay otra pestaña abierta. Probá de nuevo en un segundo';
-  return null;
-}
-
-function guardarYPdf(){
+async function guardarYPdf(){
   cerrarMenu();
-  const no = impedimento();
-  if(no) return avisar(no);
-
   const p = leerFormulario();
   if(!p.cliente && !p.items.length) return avisar('Cargá al menos el cliente o un renglón');
 
-  /* Relee antes de escribir: si otra pestaña emitió mientras tanto, el máximo
-     guardado ya subió y este número quedó quemado. Mejor no guardar que pisar. */
-  const r = Almacen.leer();
-  if(r.estado === 'danado' || r.estado === 'inaccesible')
-    return avisar('No se pudo leer el historial. NO se guardó nada. Recargá la página');
-  const maxGuardado = (r.estado === 'ok') ? r.datos.maxEmitido : maxEmitido;
+  const faltan = camposFaltantes(p);
+  if(faltan.length) return avisar('Falta cargar: ' + faltan.join(', '));
 
-  const donde = guardados.findIndex(g => g.numero === p.numero);
-  if(donde < 0 && p.numero <= maxGuardado)
-    return avisar('El N° ' + p.numero + ' ya fue emitido. NO se guardó nada. Recargá la página');
-
-  /* Copia del estado previo: si la escritura falla, la memoria no puede
-     quedar diciendo que guardó algo que no está. */
-  const previos = guardados.slice();
-  const previoMax = maxEmitido;
-
-  if(donde >= 0) guardados[donde] = p;                       // reedición: el máximo no se mueve
-  else{ guardados.push(p); maxEmitido = Math.max(maxEmitido, p.numero); }
-
-  if(persistir()){
+  const boton = $('b-pdf');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+  try{
+    const resultado = await guardarEnBase(p);
+    idTrabajoActual  = resultado.id_trabajo;
+    idClienteActual  = resultado.id_cliente;
+    idVehiculoActual = resultado.id_vehiculo;
     sucio = false;
     avisar('Guardado. Elegí "Guardar como PDF"');
-    /* sin foco en ningún campo: si no, el cursor de texto sale impreso */
     if(document.activeElement) document.activeElement.blur();
     setTimeout(() => window.print(), 420);
-  }else{
-    guardados  = previos;
-    maxEmitido = previoMax;
-    avisar('NO se pudo guardar. Descargá el CSV antes de seguir');
+  }catch(e){
+    if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
+    avisar(e.message || 'No se pudo guardar');
+  }finally{
+    boton.disabled = false;
+    boton.textContent = 'Guardar y hacer PDF';
   }
 }
 
-/* ===================== archivos ===================== */
+/* ===================== archivos (CSV de respaldo) =====================
+   Sólo exportación: es una copia para contabilidad/planilla, ya no el respaldo
+   del que depende recuperar nada — eso lo garantiza la base. */
 function bajarArchivo(texto, tipo, nombre){
   const url = URL.createObjectURL(new Blob([texto], { type: tipo }));
   const a = document.createElement('a');
@@ -755,9 +779,6 @@ function bajarArchivo(texto, tipo, nombre){
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
-/* ===================== CSV: escribir =====================
-   Una celda de texto que arranque con = + - @ la interpreta Excel como
-   fórmula. El apóstrofo la deja como texto, y al importar se saca. */
 const entrecomillar = s => /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 const celdaNumero   = v => entrecomillar(String(v ?? ''));
 const celdaTexto    = v => {
@@ -766,223 +787,143 @@ const celdaTexto    = v => {
 };
 const filaCSV = valores => valores.map((v, i) => TEXTO[i] ? celdaTexto(v) : celdaNumero(v)).join(';');
 
-/* Todo presupuesto deja al menos una fila: si no, uno sin renglones
-   desaparecería del respaldo sin que nadie se entere. */
 function filasDe(p){
-  const izq = [p.numero, p.fecha, p.cliente, p.direccion, p.telefono, p.vehiculo, p.patente];
-  const der = [p.subtotal_repuestos, p.monto_mano_obra, p.monto_total, p.creado_en, p.modificado_en];
-  const filas = (p.items || []).map(i => [...izq, i.detalle, i.importe, ...der]);
-  if(p.monto_mano_obra) filas.push([...izq, 'Mano de obra', p.monto_mano_obra, ...der]);
-  if(!filas.length)     filas.push([...izq, '', '', ...der]);
-  return filas;
+  const izq = [p.numero_presupuesto, p.fecha_presupuesto, p.cliente_actual || p.txt_cliente, p.txt_direccion,
+               p.txt_telefono, p.txt_vehiculo, p.patente_norm || p.txt_patente];
+  const der = [p.subtotal_conceptos, p.monto_mano_obra, p.monto_total, p.creado_en, p.modificado_en];
+  const items = (p.items || []).map(i => [...izq, i.detalle, i.importe, ...der]);
+  if(p.monto_mano_obra) items.push([...izq, 'Mano de obra', p.monto_mano_obra, ...der]);
+  if(!items.length)     items.push([...izq, '', '', ...der]);
+  return items;
 }
 
-function descargarCSV(){
+async function descargarCSV(){
   cerrarMenu();
-  if(!guardados.length) return avisar('Todavía no hay presupuestos guardados');
-  const filas = [COLUMNAS.join(';')];
-  guardados.forEach(p => filasDe(p).forEach(f => filas.push(filaCSV(f))));
-  bajarArchivo('﻿' + filas.join('\n'), 'text/csv;charset=utf-8',
-               'presupuestos_el_semaforo_' + hoyISO() + '.csv');
-  avisar('CSV descargado');
-}
-
-/* ===================== CSV: leer ===================== */
-function parsearCSV(texto){
-  const t = texto.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
-  const filas = [];
-  let campo = '', fila = [], comillas = false;
-  for(let i = 0; i < t.length; i++){
-    const c = t[i];
-    if(comillas){
-      if(c !== '"')            campo += c;
-      else if(t[i + 1] === '"'){ campo += '"'; i++; }
-      else                     comillas = false;
-    }
-    else if(c === '"')  comillas = true;
-    else if(c === ';'){ fila.push(campo); campo = ''; }
-    else if(c === '\n'){ fila.push(campo); filas.push(fila); fila = []; campo = ''; }
-    else                campo += c;
+  avisar('Preparando CSV…');
+  try{
+    const historial = await pedirHistorial();
+    if(!historial.length) return avisar('Todavía no hay presupuestos guardados');
+    /* El CSV lleva los renglones de cada presupuesto: una segunda consulta por cada uno. */
+    const completos = await Promise.all(historial.map(h => pedirTrabajo(h.id_trabajo)));
+    const filas = [COLUMNAS.join(';')];
+    completos.forEach((t, i) => {
+      if(!t) return;
+      const items = (t.trabajo_items || []).slice().sort((a, b) => a.orden - b.orden);
+      filasDe({ ...historial[i], txt_direccion: t.txt_direccion, txt_telefono: t.txt_telefono,
+                creado_en: t.creado_en, modificado_en: t.modificado_en, items }).forEach(f => filas.push(filaCSV(f)));
+    });
+    bajarArchivo('﻿' + filas.join('\n'), 'text/csv;charset=utf-8',
+                 'presupuestos_el_semaforo_' + hoyISO() + '.csv');
+    avisar('CSV descargado');
+  }catch(e){
+    if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
+    avisar(e.message || 'No se pudo generar el CSV');
   }
-  if(campo !== '' || fila.length){ fila.push(campo); filas.push(fila); }
-  return filas;
-}
-
-/* Saca el apóstrofo sólo si tapa un = + - @: así un nombre que de verdad
-   empiece con apóstrofo vuelve intacto. */
-const sinApostrofo = s => /^'[=+\-@]/.test(s) ? s.slice(1) : s;
-const esNum = s => String(s).trim() !== '' && Number.isFinite(Number(String(s).trim()));
-const aNum  = s => Number(String(s).trim());
-
-/* Devuelve {presupuestos} o {error}. Cualquier problema rechaza el archivo
-   entero: importar a medias dejaría un historial peor que ninguno. */
-function interpretarCSV(texto){
-  const filas = parsearCSV(texto);
-  if(!filas.length) return { error:'El archivo está vacío.' };
-
-  const cab = filas[0].map(c => sinApostrofo(c).trim());
-  if(cab.length !== COLUMNAS.length || cab.some((c, i) => c !== COLUMNAS[i]))
-    return { error:'El encabezado no es el de un CSV exportado por esta herramienta.' };
-
-  const cuerpo = filas.slice(1).filter(f => f.length > 1 || (f[0] || '') !== '');
-  if(!cuerpo.length) return { error:'El archivo no tiene ningún presupuesto.' };
-
-  const grupos = new Map();
-  for(let i = 0; i < cuerpo.length; i++){
-    const f = cuerpo[i], linea = i + 2;
-    if(f.length !== COLUMNAS.length)
-      return { error:'Línea ' + linea + ': tiene ' + f.length + ' campos y tienen que ser ' + COLUMNAS.length + '.' };
-    if(!esNum(f[0]) || !Number.isInteger(aNum(f[0])) || aNum(f[0]) <= 0)
-      return { error:'Línea ' + linea + ': "' + f[0] + '" no es un número de presupuesto válido.' };
-    for(const c of COLS_NUMERICAS)
-      if(!esNum(f[c]))
-        return { error:'Línea ' + linea + ': la columna ' + COLUMNAS[c] + ' ("' + f[c] + '") no es un número.' };
-    /* El importe vacío sólo vale en la fila mínima de un presupuesto sin
-       renglones. Un renglón con detalle y sin importe entraría como 0 sin que
-       nadie se entere: eso se rechaza. */
-    const sinImporte = String(f[COL_IMPORTE]).trim() === '';
-    const sinDetalle = sinApostrofo(String(f[COL_DETALLE])).trim() === '';
-    if(sinImporte && !sinDetalle)
-      return { error:'Línea ' + linea + ': el renglón "' + f[COL_DETALLE] + '" no tiene importe.' };
-    if(!sinImporte && !esNum(f[COL_IMPORTE]))
-      return { error:'Línea ' + linea + ': la columna importe ("' + f[COL_IMPORTE] + '") no es un número.' };
-
-    const n = aNum(f[0]);
-    if(!grupos.has(n)) grupos.set(n, []);
-    grupos.get(n).push(f);
-  }
-
-  const presupuestos = [...grupos.values()].map(reconstruir);
-  return { presupuestos };
-}
-
-function reconstruir(filas){
-  const c = filas[0], T = s => sinApostrofo(String(s));
-  const p = {
-    numero: aNum(c[0]), fecha: T(c[1]), cliente: T(c[2]), direccion: T(c[3]),
-    telefono: T(c[4]), vehiculo: T(c[5]), patente: T(c[6]),
-    monto_mano_obra: aNum(c[10]), creado_en: T(c[12]), modificado_en: T(c[13])
-  };
-
-  /* La mano de obra sale de su columna, no de la fila: así un repuesto que se
-     llame literalmente "Mano de obra" no se pierde. Se descarta una sola fila. */
-  const resto = filas.slice();
-  if(p.monto_mano_obra){
-    for(let i = resto.length - 1; i >= 0; i--){
-      if(T(resto[i][7]) === 'Mano de obra' && aNum(resto[i][COL_IMPORTE]) === p.monto_mano_obra){
-        resto.splice(i, 1);
-        break;
-      }
-    }
-  }
-
-  p.items = resto
-    .map(f => ({ detalle: T(f[7]), importe: String(f[COL_IMPORTE]).trim() === '' ? 0 : aNum(f[COL_IMPORTE]) }))
-    .filter(i => i.detalle || i.importe);
-  p.subtotal_repuestos = p.items.reduce((s, i) => s + i.importe, 0);
-  p.monto_total        = p.subtotal_repuestos + p.monto_mano_obra;
-  return p;
-}
-
-function restaurar(texto){
-  const r = interpretarCSV(texto);
-  if(r.error) return alert('No se importó nada.\n\n' + r.error);
-
-  const hay = new Set(guardados.map(g => g.numero));
-  const nuevos = r.presupuestos.filter(p => !hay.has(p.numero));
-  const salteados = r.presupuestos.length - nuevos.length;
-  if(!nuevos.length)
-    return alert('No entró ninguno: los ' + salteados + ' presupuestos del archivo ya estaban.');
-
-  const previos = guardados.slice(), previoMax = maxEmitido;
-  guardados = guardados.concat(nuevos);
-  maxEmitido = r.presupuestos.reduce((m, p) => Math.max(m, p.numero), maxEmitido);
-
-  if(!persistir()){
-    guardados  = previos;
-    maxEmitido = previoMax;
-    return alert('NO se pudo guardar la restauración. No cambió nada.');
-  }
-  if(numeroActual <= maxEmitido && !sucio) enBlanco();
-  alert('Entraron ' + nuevos.length + ' presupuestos.\nSe saltearon ' + salteados + ' por número repetido.');
-}
-
-function pedirCSV(){
-  cerrarMenu();
-  if(modoSeguro)    return avisar('Primero descargá la copia de los datos');
-  if(!inicializado) return avisar('Elegí primero desde qué número arranca');
-  $('archivo').value = '';
-  $('archivo').click();
 }
 
 /* ===================== historial ===================== */
-function borrarDelHistorial(p){
-  if(!confirm('¿Borrar el N° ' + p.numero + ' — ' + (p.cliente || 'sin nombre') + '?\n\n' +
-              'El número queda usado y no se vuelve a asignar.')) return;
-
-  const previos = guardados.slice();
-  guardados = guardados.filter(g => g.numero !== p.numero);
-  if(!persistir()){
-    guardados = previos;
-    return avisar('NO se pudo borrar');
-  }
-  /* Borrar nunca baja el máximo. Si el borrado era el que estaba en pantalla,
-     su número ya está quemado: se pasa a uno nuevo en vez de dejarlo ahí. */
-  if(numeroActual === p.numero){
-    enBlanco();
-    avisar('Borrado. Ahora estás en el N° ' + numeroActual);
-  }else{
-    avisar('Presupuesto N° ' + p.numero + ' borrado');
-  }
-  abrirHistorial();
-}
-
-function filaHistorial(p){
+function filaHistorial(h){
   const div = document.createElement('div');
   div.className = 'item';
   div.innerHTML =
-    '<div class="i-datos"><div class="i-n"></div><div class="i-d"></div></div>' +
-    '<div class="i-m"></div><button class="i-x" aria-label="Borrar">×</button>';
+    '<div class="i-datos"><div class="i-n"></div><div class="i-d"></div></div><div class="i-m"></div>';
 
-  div.querySelector('.i-n').textContent = 'N° ' + p.numero + ' — ' + (p.cliente || 'sin nombre');
-  div.querySelector('.i-d').textContent = [p.vehiculo, p.patente, p.fecha].filter(Boolean).join(' · ');
-  div.querySelector('.i-m').textContent = enPesos(p.monto_total);
+  div.querySelector('.i-n').textContent = 'N° ' + h.numero_presupuesto + ' — ' + (h.cliente_actual || h.txt_cliente || 'sin nombre');
+  div.querySelector('.i-d').textContent = [h.txt_vehiculo, h.patente_norm, h.fecha_presupuesto].filter(Boolean).join(' · ');
+  div.querySelector('.i-m').textContent = enPesos(h.monto_total);
 
-  div.onclick = () => {
+  div.onclick = async () => {
     if(!confirmarDescarte()) return;
-    mostrar(p);
-    $('modal').classList.remove('abierto');
-    window.scrollTo(0, 0);
+    try{
+      const t = await pedirTrabajo(h.id_trabajo);
+      if(!t) return avisar('Ese presupuesto ya no está disponible');
+      mostrar(trabajoAFormulario(t));
+      $('modal').classList.remove('abierto');
+      window.scrollTo(0, 0);
+    }catch(e){
+      if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
+      avisar(e.message || 'No se pudo abrir ese presupuesto');
+    }
   };
-  div.querySelector('.i-x').onclick = e => { e.stopPropagation(); borrarDelHistorial(p); };
   return div;
 }
 
-function abrirHistorial(){
+async function abrirHistorial(){
   cerrarMenu();
   const lista = $('lista');
-  lista.innerHTML = '';
-  if(!guardados.length){
-    lista.innerHTML = '<div class="vacio">Todavía no guardaste ningún presupuesto.</div>';
-  }else{
-    [...guardados].sort((a, b) => b.numero - a.numero).forEach(p => lista.appendChild(filaHistorial(p)));
-  }
+  lista.innerHTML = '<div class="vacio">Cargando…</div>';
   $('modal').classList.add('abierto');
+  try{
+    const historial = await pedirHistorial();
+    lista.innerHTML = '';
+    if(!historial.length){
+      lista.innerHTML = '<div class="vacio">Todavía no hay presupuestos guardados.</div>';
+    }else{
+      historial.forEach(h => lista.appendChild(filaHistorial(h)));
+    }
+  }catch(e){
+    if(e.message === 'sin-sesion'){ $('modal').classList.remove('abierto'); mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
+    lista.innerHTML = '<div class="vacio">No se pudo leer el historial.</div>';
+  }
+}
+
+/* ===================== login ===================== */
+function mostrarLogin(mensaje){
+  $('carga').classList.remove('abierto');
+  $('app').hidden = true;
+  $('login-error').hidden = !mensaje;
+  $('login-error').textContent = mensaje || '';
+  $('login').classList.add('abierto');
+  $('login-pass').value = '';
+  setTimeout(() => $('login-email').focus(), 50);
+}
+
+async function intentarLogin(){
+  const email = $('login-email').value.trim();
+  const pass  = $('login-pass').value;
+  if(!email || !pass){
+    $('login-error').textContent = 'Completá email y contraseña.';
+    $('login-error').hidden = false;
+    return;
+  }
+  const boton = $('login-entrar');
+  boton.disabled = true;
+  boton.textContent = 'Ingresando…';
+  $('login-error').hidden = true;
+  const r = await iniciarSesion(email, pass);
+  boton.disabled = false;
+  boton.textContent = 'Ingresar';
+  if(r.error){
+    $('login-error').textContent = r.error;
+    $('login-error').hidden = false;
+    return;
+  }
+  $('login').classList.remove('abierto');
+  await entrarALaApp();
 }
 
 /* ===================== conexiones ===================== */
-$('b-menu').onclick      = () => $('acciones').classList.toggle('abierto');
-$('b-pdf').onclick       = guardarYPdf;
-$('b-csv').onclick       = descargarCSV;
-$('b-restaurar').onclick = pedirCSV;
-$('b-hist').onclick      = abrirHistorial;
-$('b-nuevo').onclick     = () => {
+$('b-menu').onclick  = () => $('acciones').classList.toggle('abierto');
+$('b-pdf').onclick   = guardarYPdf;
+$('b-csv').onclick   = descargarCSV;
+$('b-hist').onclick  = abrirHistorial;
+$('b-nuevo').onclick = async () => {
   cerrarMenu();
-  if(!inicializado) return avisar('Elegí primero desde qué número arranca');
   if(!confirmarDescarte()) return;
-  enBlanco();
-  window.scrollTo(0, 0);
-  avisar('Presupuesto N° ' + numeroActual);
+  try{
+    await irANuevo();
+    window.scrollTo(0, 0);
+    avisar('Presupuesto N° ' + numeroActual);
+  }catch(e){
+    if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
+    avisar('No se pudo pedir el número. Revisá la conexión');
+  }
+};
+$('b-salir').onclick = () => {
+  cerrarMenu();
+  if(!confirm('¿Cerrar sesión?')) return;
+  cerrarSesion();
+  mostrarLogin();
 };
 $('b-cerrar').onclick = () => $('modal').classList.remove('abierto');
 $('modal').onclick    = e => { if(e.target === $('modal')) $('modal').classList.remove('abierto'); };
@@ -990,71 +931,45 @@ $('add').onclick      = () => { sucio = true; agregarRenglon().querySelector('.d
 $('mo').oninput       = () => { sucio = true; calcular(); };
 $('mo').onblur        = () => { $('mo').value = conMiles(aNumero($('mo').value)); calcular(); };
 $('fecha').onchange   = () => { sucio = true; pintarFecha(); };
-$('patente').onblur   = e => { e.target.value = normalizarPatente(e.target.value); };
+$('patente').onblur   = e => {
+  e.target.value = normalizarPatente(e.target.value);
+  if(e.target.value && !patenteFormatoValido(e.target.value)) avisar('Formato de patente inusual — revisala');
+};
 CAMPOS.filter(c => c !== 'fecha').forEach(c => $(c).oninput = () => { sucio = true; });
 
-$('b-rescate').onclick = () => {
-  if(brutoDanado === null) return;
-  bajarArchivo(brutoDanado, 'text/plain;charset=utf-8', 'semaforo_datos_crudos_' + hoyISO() + '.txt');
-  avisar('Copia descargada. Guardala antes de seguir');
-};
-
-$('archivo').onchange = e => {
-  const f = e.target.files && e.target.files[0];
-  if(!f) return;
-  const lector = new FileReader();
-  lector.onload  = () => restaurar(String(lector.result));
-  lector.onerror = () => alert('No se pudo leer el archivo.');
-  lector.readAsText(f, 'utf-8');
-};
-
-/* compuerta */
-$('c-primera').onclick  = () => cerrarCompuerta(PRIMER_NUMERO - 1);
-$('c-otro').onclick     = () => { $('c-ultimo').value = ''; $('c-error').hidden = true; verPaso('c-numero'); $('c-ultimo').focus(); };
-$('c-volver').onclick   = () => verPaso('c-opciones');
-$('c-corregir').onclick = () => { verPaso('c-numero'); $('c-ultimo').focus(); };
-$('c-seguir').onclick   = () => {
-  const error = validarUltimo();
-  $('c-error').textContent = error || '';
-  $('c-error').hidden = !error;
-  if(error) return;
-  $('c-proximo').textContent = 'N° ' + (parseInt($('c-ultimo').value.trim(), 10) + 1);
-  verPaso('c-confirmar');
-};
-$('c-aceptar').onclick  = () => cerrarCompuerta(parseInt($('c-ultimo').value.trim(), 10));
-$('c-ultimo').onkeydown = e => { if(e.key === 'Enter') $('c-seguir').click(); };
+$('login-entrar').onclick = intentarLogin;
+$('login-pass').onkeydown = e => { if(e.key === 'Enter') intentarLogin(); };
+$('login-email').onkeydown = e => { if(e.key === 'Enter') $('login-pass').focus(); };
 
 document.addEventListener('click', e => {
   if(!$('acciones').contains(e.target)) cerrarMenu();
 });
 window.addEventListener('beforeunload', e => {
-  if(sucio && estadoPestana !== 'bloqueado'){ e.preventDefault(); e.returnValue = ''; }
+  if(sucio){ e.preventDefault(); e.returnValue = ''; }
 });
 
 /* ===================== arranque ===================== */
-(function(){
-  const r = Almacen.leer();
-  if(r.estado === 'danado' || r.estado === 'inaccesible'){
-    modoSeguro  = true;
-    brutoDanado = (r.estado === 'danado') ? r.bruto : null;
-    $('texto-datos').textContent = brutoDanado !== null
-      ? 'Los datos guardados en este navegador están dañados. El guardado quedó bloqueado ' +
-        'para no borrarlos. Descargá la copia antes de hacer cualquier otra cosa.'
-      : 'Este navegador no deja leer ni escribir los datos guardados. Puede ser el modo ' +
-        'incógnito o la configuración de privacidad. El guardado quedó bloqueado y no hay copia para descargar.';
-    $('b-rescate').hidden = (brutoDanado === null);
-    $('alerta-datos').hidden = false;
-    enBlanco();
-  }else if(r.estado === 'ok'){
-    guardados    = r.datos.guardados;
-    maxEmitido   = r.datos.maxEmitido;
-    inicializado = true;
-    enBlanco();
-  }else{
-    enBlanco();          // pantalla de fondo, sin número hasta que se elija
-    abrirCompuerta();
+async function entrarALaApp(){
+  $('carga-txt').textContent = 'Conectando…';
+  $('carga').classList.add('abierto');
+  $('app').hidden = true;
+  try{
+    await irANuevo();
+    $('carga').classList.remove('abierto');
+    $('app').hidden = false;
+    window.scrollTo(0, 0);
+  }catch(e){
+    if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
+    $('carga-txt').textContent = 'No se pudo conectar con la base. Revisá tu conexión y recargá la página.';
   }
-  sondear();
+}
+
+(async function(){
+  if(sesionActual){
+    await entrarALaApp();
+  }else{
+    mostrarLogin();
+  }
 })();
 </script>
 </body>
