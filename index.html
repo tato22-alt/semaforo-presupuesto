@@ -395,7 +395,16 @@ const conMiles  = n => n ? Math.round(n).toLocaleString('es-AR') : '';
 const enPesos   = n => '$' + Math.round(n || 0).toLocaleString('es-AR');
 const capitalizar = t => t ? t[0].toUpperCase() + t.slice(1) : t;
 const normalizarPatente = v => String(v || '').toUpperCase().replace(/[\s.-]/g, '');
-const hoyISO = () => new Date().toISOString().slice(0, 10);
+/* La fecha del calendario, la del taller. NO toISOString(): eso da la fecha UTC,
+   y en Argentina (UTC-3) todo lo cargado después de las 21hs saldría fechado al
+   día siguiente. Los sellos creado_en/modificado_en sí van en UTC, que es lo
+   correcto para un instante. */
+const hoyISO = () => {
+  const d = new Date();
+  return d.getFullYear() + '-' +
+         String(d.getMonth() + 1).padStart(2, '0') + '-' +
+         String(d.getDate()).padStart(2, '0');
+};
 
 /* RF-022: no bloquea, sólo avisa. Misma regla que fn_es_formato_patente_valido en la base. */
 const patenteFormatoValido = v => {
@@ -762,7 +771,7 @@ function camposFaltantes(p){
   if(!p.cliente)                faltan.push('el nombre del cliente');
   if(!p.direccion)              faltan.push('la dirección');
   if(!p.telefono)               faltan.push('el teléfono');
-  if(!p.monto_mano_obra)        faltan.push('la mano de obra');
+  if(!(p.monto_mano_obra > 0))  faltan.push('la mano de obra');
   return faltan;
 }
 
@@ -820,6 +829,9 @@ async function guardarYPdf(){
 
   const faltan = camposFaltantes(p);
   if(faltan.length) return avisar('Falta cargar: ' + faltan.join(', '));
+  /* La base rechaza importes negativos, y para cuando los rechaza el número ya
+     está gastado. Se atajan acá. */
+  if(p.items.some(i => i.importe < 0)) return avisar('Hay un renglón con importe negativo');
 
   const boton = $('b-pdf');
   boton.disabled = true;
@@ -1032,7 +1044,9 @@ async function entrarALaApp(){
     /* Confirma que la sesión sirve de verdad, sin gastar ningún número. */
     const r = await api('/rest/v1/vw_presupuestos?select=id_trabajo&limit=1');
     if(!r.ok) throw new Error('No se pudo conectar con la base');
-    irANuevo();
+    /* Si la sesión venció en medio de una carga, al volver a entrar hay que
+       encontrar el presupuesto como estaba: en blanco sólo si no había nada. */
+    if(!sucio) irANuevo();
     $('carga').classList.remove('abierto');
     $('app').hidden = false;
     window.scrollTo(0, 0);
