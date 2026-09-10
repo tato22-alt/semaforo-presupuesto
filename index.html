@@ -38,7 +38,7 @@
   .hoja{
     max-width:var(--hoja-ancho);margin:0 auto;background:var(--papel);
     border:1px solid #d3d8de;box-shadow:0 2px 14px rgba(20,20,20,.09);
-    padding:18px;position:relative;
+    padding:18px;position:relative;display:flex;flex-direction:column;
   }
 
   /* ---------- marca de agua ----------
@@ -56,7 +56,7 @@
     color:rgba(21,24,28,.05);
   }
   /* el contenido va por encima de la marca */
-  .cab,.datos,table,.tot,.add{position:relative;z-index:1}
+  .cab,.datos,.caja,.tot,.add{position:relative;z-index:1}
 
   /* ---------- cabecera ---------- */
   .cab{display:flex;gap:12px;align-items:flex-start;border-bottom:2px solid var(--tinta);padding-bottom:8px}
@@ -83,8 +83,12 @@
   .campo input{flex:1;min-width:0;border:0;background:transparent;font-size:var(--txt-campo);padding:1px 2px 2px}
   .campo input:focus{outline:0;background:#fff8e6}
 
-  /* ---------- conceptos ---------- */
-  table{width:100%;border-collapse:collapse;margin-top:10px;border:1.5px solid var(--tinta)}
+  /* ---------- conceptos ----------
+     El recuadro lo dibuja .caja y no la tabla, para poder estirarlo hasta el pie
+     de la hoja sin tocar el alto de los renglones. Ningún renglón se deforma:
+     lo que crece es el marco, como en el talonario de papel. */
+  .caja{border:1.5px solid var(--tinta);margin-top:10px;display:flex;flex-direction:column}
+  table{width:100%;border-collapse:collapse}
   thead th{
     font-size:9.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--tenue);font-weight:700;
     text-align:left;padding:4px 8px;border-bottom:1.5px solid var(--tinta);background:#f7f8fa;
@@ -101,7 +105,7 @@
   .quitar{width:100%;border:0;background:transparent;color:#c3c9d0;font-size:18px;line-height:1;padding:7px 0;cursor:pointer}
   .quitar:hover{color:var(--rojo)}
   .add{
-    margin-top:8px;width:100%;background:transparent;border:1px dashed var(--linea);
+    margin:8px;background:transparent;border:1px dashed var(--linea);
     color:var(--tenue);font:inherit;font-size:12.5px;font-weight:600;padding:9px;cursor:pointer;
   }
   .add:hover{border-color:var(--naranja);color:var(--naranja)}
@@ -114,11 +118,6 @@
   .fila b{font-variant-numeric:tabular-nums;font-weight:700}
   .letras{margin-top:9px;font-size:11px;color:var(--tenue);text-align:right}
   .letras span{color:var(--tinta)}
-  /* El código va AL LADO del total, nunca encima: el importe es el dato que el
-     cliente tiene que poder leer sin ninguna duda. */
-  .cod{margin-top:7px;font-size:10px;color:var(--tenue);text-align:right;line-height:1.5}
-  .cod b{font-variant-numeric:tabular-nums;letter-spacing:1.2px;color:var(--tinta);font-size:11.5px}
-  .cod em{display:block;font-style:normal;font-size:9px}
 
   /* ---------- menú de acciones ---------- */
   .acciones{
@@ -204,7 +203,8 @@
     .datos{gap:0 34px;padding:14px 0 4px}
     thead th{font-size:11px;padding:7px 11px}
     tbody input,tfoot input,tfoot .r-mo span{padding:11px}
-    table{margin-top:16px}
+    .caja{margin-top:16px;flex:1}
+    .hoja{min-height:calc(var(--hoja-ancho) * 1.25)}
     .add{font-size:14px;padding:12px}
     .tot{max-width:400px;margin-top:16px}
     .fila{font-size:25px;padding:12px 0}
@@ -219,11 +219,12 @@
   /* ---------- impresión ---------- */
   @media print{
     @page{size:A4;margin:14mm}
-    body{background:#fff;padding:0;font-size:12px}
-    .hoja{max-width:none;border:0;box-shadow:none;padding:0}
+    body{background:#fff;padding:0;font-size:15.5px}
+    .hoja{max-width:none;border:0;box-shadow:none;padding:0;min-height:246mm}
+    .caja{margin-top:11px;flex:1}
     .acciones,.add,.modal,.aviso,.quitar,th.c-x{display:none!important}
-    .marca span{color:rgba(21,24,28,.075)}
-    .marca,.cod{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .marca span{color:rgba(21,24,28,.055);font-size:15px}
+    .marca{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     td.x{display:none}
     tr.vacia{display:none!important}
     input{background:transparent!important}
@@ -233,21 +234,25 @@
     .contacto{color:inherit!important;text-decoration:none!important;padding:0}
 
     .cab{padding-bottom:6px}
-    .cab img{height:46px}
-    .razon{font-size:17px}
-    .sub{font-size:8.5px;line-height:1.4}
-    .nro{font-size:15px;padding:2px 8px}
-    .tipo{font-size:11.5px}
-    .datos{padding:6px 0 1px}
-    .campo{padding:2px 0 0;border-bottom:1px solid #666}
-    .campo input{font-size:11.5px}
+    .cab img{height:60px}
+    .razon{font-size:22px}
+    .sub{font-size:11px;line-height:1.4}
+    .nro{font-size:19.5px;padding:3px 10px}
+    .tipo{font-size:15px}
+    .datos{padding:8px 0 1px}
+    .campo{padding:3px 0 0;border-bottom:1px solid #666}
+    .campo label{font-size:13px}
+    .campo input{font-size:15px}
     #fecha{display:none}
     #fecha-txt{display:inline-block;width:106px;text-align:center}
-    table{margin-top:8px}
-    thead th{padding:4px 8px}
-    tbody input,tfoot input,tfoot .r-mo span{padding:5px 10px;font-size:11.5px}
+    thead th{font-size:12.5px}
+    thead th{padding:5px 10px}
+    tbody input,tfoot input,tfoot .r-mo span{padding:7px 13px;font-size:15px}
     td.imp input{padding-right:10px}
-    .tot{margin-top:8px}
+    .tot{margin-top:10px;max-width:420px}
+    .fila{font-size:25px;padding:11px 0}
+    .fila span{font-size:15.5px}
+    .letras{font-size:14px}
 
     /* si hay segunda hoja, que salga bien */
     thead{display:table-header-group}
@@ -314,28 +319,26 @@
     <div class="campo ancho"><label for="telefono">Teléfono</label><input id="telefono" inputmode="tel" autocomplete="off"></div>
   </section>
 
-  <table>
-    <thead>
-      <tr><th>Detalle</th><th class="c-imp">Importe</th><th class="c-x"></th></tr>
-    </thead>
-    <tbody id="items"></tbody>
-    <tfoot>
-      <tr class="r-mo">
-        <td><span>Mano de obra</span></td>
-        <td class="imp"><input id="mo" inputmode="numeric" placeholder="0"></td>
-        <td class="x"></td>
-      </tr>
-    </tfoot>
-  </table>
-  <button class="add" id="add">+ Agregar renglón</button>
+  <div class="caja">
+    <table>
+      <thead>
+        <tr><th>Detalle</th><th class="c-imp">Importe</th><th class="c-x"></th></tr>
+      </thead>
+      <tbody id="items"></tbody>
+      <tfoot>
+        <tr class="r-mo">
+          <td><span>Mano de obra</span></td>
+          <td class="imp"><input id="mo" inputmode="numeric" placeholder="0"></td>
+          <td class="x"></td>
+        </tr>
+      </tfoot>
+    </table>
+    <button class="add" id="add">+ Agregar renglón</button>
+  </div>
 
   <div class="tot">
     <div class="fila"><span>Total</span><b id="total">$0</b></div>
     <div class="letras">Son pesos <span id="letras">—</span></div>
-    <div class="cod" id="cod" hidden>
-      Código de verificación <b id="cod-valor">—</b>
-      <em>Verificable en el taller citando el N° y este código.</em>
-    </div>
   </div>
 </div>
 
@@ -558,7 +561,7 @@ async function pedirProximoNumero(){
 
 async function pedirHistorial(){
   const r = await api('/rest/v1/vw_presupuestos?select=id_trabajo,numero_presupuesto,fecha_presupuesto,' +
-    'cliente_actual,txt_cliente,patente_norm,txt_vehiculo,monto_total,id_cliente,id_vehiculo,codigo_verificacion' +
+    'cliente_actual,txt_cliente,patente_norm,txt_vehiculo,monto_total,id_cliente,id_vehiculo' +
     '&order=numero_presupuesto.desc&limit=' + MAX_HISTORIAL);
   if(!r.ok) throw new Error('No se pudo leer el historial');
   return await leerJSON(r) || [];
@@ -582,8 +585,7 @@ function trabajoAFormulario(t){
     numero: t.numero_presupuesto, fecha: t.fecha_presupuesto || '',
     cliente: t.txt_cliente || '', direccion: t.txt_direccion || '',
     telefono: t.txt_telefono || '', vehiculo: t.txt_vehiculo || '', patente: t.txt_patente || '',
-    monto_mano_obra: t.monto_mano_obra || 0, items, creado_en: t.creado_en,
-    codigo: t.codigo_verificacion || null
+    monto_mano_obra: t.monto_mano_obra || 0, items, creado_en: t.creado_en
   };
 }
 
@@ -638,9 +640,6 @@ async function guardarEnBase(p){
 
   let id_trabajo = p.id_trabajo || null;
   let numero = p.numero;
-  /* El código lo pone la base con un default: la aplicación no lo envía nunca,
-     y al reeditar se conserva el que ya tenía (RF-203). */
-  let codigo = p.codigo || null;
   if(id_trabajo){
     const r = await api('/rest/v1/trabajos?id_trabajo=eq.' + id_trabajo, {
       method: 'PATCH', body: JSON.stringify(datosTrabajo)
@@ -659,7 +658,6 @@ async function guardarEnBase(p){
     if(!r.ok) throw new Error('El presupuesto N° ' + numero + ' no se pudo guardar');
     const filas = await leerJSON(r);
     id_trabajo = filas && filas[0] && filas[0].id_trabajo;
-    codigo     = filas && filas[0] && filas[0].codigo_verificacion;
   }
 
   if(p.id_trabajo){
@@ -672,7 +670,7 @@ async function guardarEnBase(p){
     if(!r.ok) throw new Error('El N° ' + numero + ' se guardó pero los renglones no. Reabrilo del historial y guardá de nuevo');
   }
 
-  return { id_trabajo, id_cliente, id_vehiculo, numero, codigo };
+  return { id_trabajo, id_cliente, id_vehiculo, numero };
 }
 
 /* ===================== renglones ===================== */
@@ -733,7 +731,6 @@ let idClienteActual = null;
 let idVehiculoActual = null;
 let numeroActual = null;
 let creadoEn = null;
-let codigoActual = null;
 let sucio = false;
 
 function leerFormulario(){
@@ -744,8 +741,8 @@ function leerFormulario(){
     }))
     .filter(i => i.detalle || i.importe);
 
-  const p = { numero: numeroActual, items, id_trabajo: idTrabajoActual, id_cliente: idClienteActual,
-              id_vehiculo: idVehiculoActual, codigo: codigoActual };
+  const p = { numero: numeroActual, items, id_trabajo: idTrabajoActual,
+              id_cliente: idClienteActual, id_vehiculo: idVehiculoActual };
   CAMPOS.forEach(c => p[c] = $(c).value.trim());
   p.patente            = normalizarPatente(p.patente);
   p.subtotal_repuestos = items.reduce((s, i) => s + i.importe, 0);
@@ -776,12 +773,6 @@ function pintarMarca(){
   $('marca').firstElementChild.textContent = linea.repeat(28);
 }
 
-function pintarCodigo(codigo){
-  codigoActual = codigo || null;
-  $('cod').hidden = !codigoActual;
-  $('cod-valor').textContent = codigoActual || '—';
-}
-
 function mostrar(p){
   numeroActual   = p.numero;
   idTrabajoActual  = p.id_trabajo || null;
@@ -796,7 +787,6 @@ function mostrar(p){
   const items = (p.items && p.items.length) ? p.items : [{}, {}, {}];
   items.forEach(i => agregarRenglon(i.detalle || '', i.importe || ''));
   calcular();
-  pintarCodigo(p.codigo);
   pintarMarca();
   sucio = false;
 }
@@ -841,7 +831,6 @@ async function guardarYPdf(){
     idVehiculoActual = resultado.id_vehiculo;
     numeroActual     = resultado.numero;
     $('nro').textContent = numeroActual;   // tiene que estar en pantalla antes de imprimir
-    pintarCodigo(resultado.codigo);
     pintarMarca();
     sucio = false;
     avisar('Guardado con el N° ' + numeroActual + '. Elegí "Guardar como PDF"');
