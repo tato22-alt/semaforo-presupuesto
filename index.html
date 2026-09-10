@@ -67,6 +67,9 @@
   .cab-der{flex:none;text-align:right;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
   .tipo{font-size:13px;font-weight:800;letter-spacing:2.6px;color:var(--tenue)}
   .nro{border:1.5px solid var(--tinta);padding:2px 10px;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+  /* Aviso chico DEBAJO del casillero, no adentro: el texto largo deformaría la
+     caja y en el celular rompería la cabecera. */
+  .nro-aviso{font-size:9px;color:var(--tenue);font-weight:700;letter-spacing:.3px;margin-top:-2px}
   .f-caja{border:1px solid var(--linea);padding:2px 6px}
   .f-caja input{border:0;background:transparent;font-size:12px;font-weight:600;text-align:center;width:106px;padding:1px 0}
   .f-caja input:focus{outline:0}
@@ -238,6 +241,7 @@
     .razon{font-size:22px}
     .sub{font-size:11px;line-height:1.4}
     .nro{font-size:19.5px;padding:3px 10px}
+    .nro-aviso{display:none}
     .tipo{font-size:15px}
     .datos{padding:8px 0 1px}
     .campo{padding:3px 0 0;border-bottom:1px solid #666}
@@ -307,6 +311,7 @@
     <div class="cab-der">
       <div class="tipo">PRESUPUESTO</div>
       <div class="nro">N° <span id="nro">—</span></div>
+      <div class="nro-aviso" id="nro-aviso">se asigna al guardar</div>
       <div class="f-caja"><input type="date" id="fecha"><span id="fecha-txt"></span></div>
     </div>
   </header>
@@ -789,6 +794,7 @@ function mostrar(p){
   idVehiculoActual = p.id_vehiculo || null;
   creadoEn = p.creado_en || null;
   $('nro').textContent = p.numero != null ? p.numero : '—';
+  $('nro-aviso').hidden = (p.numero != null);
   CAMPOS.forEach(c => $(c).value = p[c] || '');
   pintarFecha();
   $('mo').value = conMiles(p.monto_mano_obra);
@@ -843,6 +849,7 @@ async function guardarYPdf(){
     idVehiculoActual = resultado.id_vehiculo;
     numeroActual     = resultado.numero;
     $('nro').textContent = numeroActual;   // tiene que estar en pantalla antes de imprimir
+    $('nro-aviso').hidden = true;
     pintarMarca();
     sucio = false;
     avisar('Guardado con el N° ' + numeroActual + '. Elegí "Guardar como PDF"');
