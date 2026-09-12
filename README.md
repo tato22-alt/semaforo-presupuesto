@@ -73,14 +73,6 @@ Arriba de la lista hay un buscador. Escribí el **nombre del cliente** (sin impo
 acentos ni mayúsculas: *peña* encuentra a *Peña* y a *Pena*), una **patente** (da igual
 cómo la escribas) o directamente el **número de presupuesto**.
 
-## Resumen del mes
-
-**Acciones → Resumen del mes** te dice cuántos presupuestos emitiste, por cuánto, cómo
-terminaron y cuántos vinieron por seguro — con el mes anterior al lado para comparar.
-
-Los que figuran como *"sin marcar todavía"* son los que les falta la Ficha. Mientras
-queden sin marcar, esos números no dicen toda la verdad.
-
 ## Cuando un auto vuelve
 
 Si cargás una patente que ya estuvo en el taller, la herramienta te ofrece traer los

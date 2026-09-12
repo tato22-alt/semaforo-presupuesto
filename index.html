@@ -178,15 +178,6 @@
                   border:1px solid var(--linea);background:transparent}
   .buscador input:focus{outline:0;border-color:var(--naranja);background:#fff8e6}
 
-  /* ---------- resumen del mes ---------- */
-  .res{padding:4px 16px 18px}
-  .res h3{margin:16px 0 8px;font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--tenue)}
-  .res table{width:100%;border:0;margin:0}
-  .res td{padding:7px 0;border-bottom:1px solid var(--linea-suave);font-size:13.5px}
-  .res td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .res .grande td{font-size:16px;padding:10px 0}
-  .res .comp{color:var(--tenue);font-size:12px;font-weight:400}
-  .res .nota{margin:14px 0 0;font-size:12px;line-height:1.5;color:var(--tenue)}
 
   /* ---------- ficha interna ----------
      Lo que no se sabe al emitir y no va impreso: si el trabajo se concretó, y si
@@ -395,7 +386,6 @@
     <button id="b-pdf" class="principal">Guardar y hacer PDF</button>
     <button id="b-nuevo">Nuevo presupuesto</button>
     <button id="b-hist">Ver historial</button>
-    <button id="b-resumen">Resumen del mes</button>
     <button id="b-csv">Descargar CSV</button>
     <button id="b-salir" class="salir">Cerrar sesión</button>
   </div>
@@ -416,16 +406,6 @@
 </div>
 
 </div><!-- #app -->
-
-<div class="modal" id="modal-res">
-  <div class="panel">
-    <div class="p-cab">
-      <h2>Resumen del mes</h2>
-      <button id="b-res-cerrar" aria-label="Cerrar">×</button>
-    </div>
-    <div class="res" id="res-cuerpo"></div>
-  </div>
-</div>
 
 <div class="aviso" id="aviso"></div>
 
@@ -1170,79 +1150,6 @@ function abrirHistorial(){
   listarHistorial('');
 }
 
-/* ===================== resumen del mes ===================== */
-const primerDia = (desplazamiento = 0) => {
-  const d = new Date();
-  d.setDate(1);
-  d.setMonth(d.getMonth() + desplazamiento);
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01';
-};
-
-const NOMBRE_MES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto',
-                    'septiembre','octubre','noviembre','diciembre'];
-
-function resumirMes(filas){
-  const r = { cantidad: filas.length, total: 0, concretados: 0, noConcretados: 0,
-              sinDefinirEstado: 0, particular: 0, siniestro: 0, sinDefinirOrigen: 0 };
-  filas.forEach(f => {
-    r.total += Number(f.monto_total) || 0;
-    if(f.no_concretado) r.noConcretados++; else r.sinDefinirEstado++;
-    if(f.origen === 'particular') r.particular++;
-    else if(f.origen === 'siniestro') r.siniestro++;
-    else r.sinDefinirOrigen++;
-  });
-  return r;
-}
-
-async function abrirResumen(){
-  cerrarMenu();
-  const cuerpo = $('res-cuerpo');
-  cuerpo.innerHTML = '<div class="vacio">Cargando…</div>';
-  $('modal-res').classList.add('abierto');
-  try{
-    const desde = primerDia(-1);
-    const r = await api('/rest/v1/vw_presupuestos?select=numero_presupuesto,fecha_presupuesto,' +
-      'monto_total,no_concretado,origen&fecha_presupuesto=gte.' + desde + '&order=fecha_presupuesto.asc&limit=2000');
-    if(!r.ok) throw new Error('No se pudo leer el resumen');
-    const filas = await leerJSON(r) || [];
-    const inicioMes = primerDia(0);
-    const esteMes    = resumirMes(filas.filter(f => f.fecha_presupuesto >= inicioMes));
-    const mesAnterior = resumirMes(filas.filter(f => f.fecha_presupuesto <  inicioMes));
-
-    const hoy = new Date();
-    const comp = (valor) => valor ? '<span class="comp"> · mes pasado ' + valor + '</span>' : '';
-
-    cuerpo.innerHTML =
-      '<h3>' + NOMBRE_MES[hoy.getMonth()] + ' ' + hoy.getFullYear() + '</h3>' +
-      '<table><tbody>' +
-      '<tr class="grande"><td>Presupuestos emitidos</td><td>' + esteMes.cantidad +
-        comp(mesAnterior.cantidad) + '</td></tr>' +
-      '<tr class="grande"><td>Total cotizado</td><td>' + enPesos(esteMes.total) +
-        comp(enPesos(mesAnterior.total)) + '</td></tr>' +
-      '</tbody></table>' +
-
-      '<h3>Cómo terminaron</h3><table><tbody>' +
-      '<tr><td>No se concretaron</td><td>' + esteMes.noConcretados + '</td></tr>' +
-      '<tr><td>Sin marcar todavía</td><td>' + esteMes.sinDefinirEstado + '</td></tr>' +
-      '</tbody></table>' +
-
-      '<h3>De dónde vienen</h3><table><tbody>' +
-      '<tr><td>Particular</td><td>' + esteMes.particular + '</td></tr>' +
-      '<tr><td>Siniestro</td><td>' + esteMes.siniestro + '</td></tr>' +
-      '<tr><td>Sin marcar todavía</td><td>' + esteMes.sinDefinirOrigen + '</td></tr>' +
-      '</tbody></table>' +
-
-      (esteMes.sinDefinirOrigen || esteMes.sinDefinirEstado
-        ? '<p class="nota">Los "sin marcar" se completan desde el historial, con el botón ' +
-          '<b>Ficha</b> de cada presupuesto. Mientras queden sin marcar, estos números ' +
-          'no dicen toda la verdad.</p>'
-        : '');
-  }catch(e){
-    if(e.message === 'sin-sesion'){ $('modal-res').classList.remove('abierto'); mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
-    cuerpo.innerHTML = '<div class="vacio">No se pudo armar el resumen.</div>';
-  }
-}
-
 /* ===================== login ===================== */
 function mostrarLogin(mensaje){
   $('carga').classList.remove('abierto');
@@ -1283,9 +1190,6 @@ $('b-menu').onclick  = () => $('acciones').classList.toggle('abierto');
 $('b-pdf').onclick   = guardarYPdf;
 $('b-csv').onclick   = descargarCSV;
 $('b-hist').onclick  = abrirHistorial;
-$('b-resumen').onclick = abrirResumen;
-$('b-res-cerrar').onclick = () => $('modal-res').classList.remove('abierto');
-$('modal-res').onclick = e => { if(e.target === $('modal-res')) $('modal-res').classList.remove('abierto'); };
 /* Espera a que se deje de tipear para no disparar una consulta por tecla. */
 $('buscar').oninput = e => {
   clearTimeout($('buscar')._t);

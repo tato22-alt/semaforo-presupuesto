@@ -120,19 +120,35 @@ cuáles fueron por seguro.
 cotiza se convierte en trabajo, y cuánto de la facturación depende de las aseguradoras.
 Ninguna de las dos se puede reconstruir para atrás si no se registran cuando pasan.
 
-## Búsqueda, resumen y reconocimiento del vehículo
+## El alcance de esta herramienta, y dónde termina
+
+**Esta herramienta emite presupuestos. Nada más.**
+
+Todo lo que necesita para producir un presupuesto correcto —numerarlo, imprimirlo,
+encontrarlo después, corregirlo, y anotarle los dos datos que se saben más tarde— entra
+acá. Lo que agrega, compara o decide —cobranza, estado del auto, tableros, reportes— es
+de la aplicación El Semáforo, que vive en otro repositorio y consume la misma base.
+
+Hubo un resumen mensual acá y **se retiró a propósito**, por dos motivos:
+
+1. "Cuántos emití y por cuánto" es una pregunta de gestión, no de emisión.
+2. Sumaba los montos en el navegador. Si El Semáforo calculara lo mismo por su cuenta,
+   habría dos definiciones del mismo número sin forma de saber cuál manda — exactamente
+   lo que el principio III de la constitución existe para evitar. Cuando ese corte
+   mensual haga falta, va como una vista en la base, con su spec, y los dos consumidores
+   leen lo mismo.
+
+**Y una línea que conviene no cruzar:** que El Semáforo no emita presupuestos. Emitir son
+cuatro escrituras encadenadas sin transacción (hallazgo H4); esa lógica delicada
+duplicada en dos aplicaciones termina comportándose distinto en cada una.
+
+## Búsqueda y reconocimiento del vehículo
 
 **Buscador.** Un número busca por `numero_presupuesto`; cualquier otro texto va contra
 `cliente_norm` y `patente_norm` con `ilike`, normalizando en el navegador igual que lo
 hace la base (sin acentos, mayúsculas, espacios colapsados). Pega contra el índice de
 trigramas que existe desde el feature 001. Espera 300 ms entre teclas para no disparar
 una consulta por letra, y descarta respuestas que llegan fuera de orden.
-
-**Resumen del mes.** Una sola consulta desde el primero del mes anterior; el corte entre
-los dos meses se hace en el navegador. Muestra cuántos presupuestos, por cuánto, cómo
-terminaron y de dónde vienen, con el mes anterior al lado. Dice explícitamente cuántos
-están sin marcar, porque un número calculado sobre datos a medias engaña más que no
-tenerlo.
 
 **Reconocimiento por patente (RF-012).** Al salir del campo patente, si el vehículo ya
 existe se propone el último cliente conocido (`vehiculos.id_cliente_ultimo`, que el
