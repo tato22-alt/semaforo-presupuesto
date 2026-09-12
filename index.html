@@ -174,6 +174,23 @@
   .i-m{font-weight:700;font-variant-numeric:tabular-nums;font-size:14px;white-space:nowrap}
   .vacio{padding:28px 16px;text-align:center;color:var(--tenue);font-size:13px}
 
+  /* ---------- ficha interna ----------
+     Lo que no se sabe al emitir y no va impreso: si el trabajo se concretó, y si
+     fue particular o por seguro. Se carga después, desde el historial, y nunca
+     toca el documento que ya se entregó. */
+  .i-marca{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.4px;
+           text-transform:uppercase;padding:1px 5px;margin-left:6px;vertical-align:1px}
+  .i-marca.no{background:#fdecef;color:#8c0f2c}
+  .i-marca.org{background:#eef1f4;color:var(--tenue)}
+  .i-ficha{border:1px solid var(--linea);background:#fff;color:var(--tenue);font:inherit;
+           font-size:11px;font-weight:700;padding:5px 9px;cursor:pointer;flex:none}
+  .i-ficha:hover{border-color:var(--naranja);color:var(--naranja)}
+  .ficha{padding:10px 16px 14px;background:#f7f8fa;border-bottom:1px solid #f2f4f6;
+         display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+  .ficha label{font-size:12.5px;display:flex;align-items:center;gap:6px;color:var(--tinta)}
+  .ficha select{font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid var(--linea);background:#fff}
+  .ficha .f-estado{font-size:11.5px;color:var(--verde);font-weight:700}
+
   /* ---------- modales chicos: login, carga ---------- */
   .modal.centrado.abierto{align-items:center}
   .p-cuerpo{padding:16px;overflow-y:auto}
@@ -587,7 +604,8 @@ async function pedirProximoNumero(){
 
 async function pedirHistorial(){
   const r = await api('/rest/v1/vw_presupuestos?select=id_trabajo,numero_presupuesto,fecha_presupuesto,' +
-    'cliente_actual,txt_cliente,patente_norm,txt_vehiculo,monto_total,id_cliente,id_vehiculo' +
+    'cliente_actual,txt_cliente,patente_norm,txt_vehiculo,monto_total,id_cliente,id_vehiculo,' +
+    'no_concretado,origen' +
     '&order=numero_presupuesto.desc&limit=' + MAX_HISTORIAL);
   if(!r.ok) throw new Error('No se pudo leer el historial');
   return await leerJSON(r) || [];
@@ -933,15 +951,94 @@ async function descargarCSV(){
 }
 
 /* ===================== historial ===================== */
+/* Guarda un cambio de la ficha interna. No toca el número, ni los renglones, ni
+   nada de lo que salió impreso: sólo estos dos campos. */
+async function guardarFicha(h, cambio, donde){
+  donde.textContent = 'guardando…';
+  donde.style.color = 'var(--tenue)';
+  try{
+    const r = await api('/rest/v1/trabajos?id_trabajo=eq.' + h.id_trabajo, {
+      method: 'PATCH',
+      body: JSON.stringify({ ...cambio, modificado_en: new Date().toISOString() })
+    });
+    if(!r.ok) throw new Error('no se pudo guardar');
+    Object.assign(h, cambio);
+    donde.textContent = 'guardado';
+    donde.style.color = 'var(--verde)';
+    return true;
+  }catch(e){
+    if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return false; }
+    donde.textContent = 'no se pudo guardar';
+    donde.style.color = 'var(--rojo)';
+    return false;
+  }
+}
+
+/* Abre o cierra el panel debajo de la fila. */
+function alternarFicha(fila, h){
+  const abierta = fila.nextElementSibling && fila.nextElementSibling.classList.contains('ficha');
+  if(abierta){ fila.nextElementSibling.remove(); return; }
+
+  const panel = document.createElement('div');
+  panel.className = 'ficha';
+  panel.innerHTML =
+    '<label><input type="checkbox" class="f-no"> No se concretó</label>' +
+    '<label>Origen <select class="f-org">' +
+      '<option value="">Sin definir</option>' +
+      '<option value="particular">Particular</option>' +
+      '<option value="siniestro">Siniestro</option>' +
+    '</select></label>' +
+    '<span class="f-estado"></span>';
+  panel.onclick = e => e.stopPropagation();
+
+  const chk = panel.querySelector('.f-no');
+  const sel = panel.querySelector('.f-org');
+  const est = panel.querySelector('.f-estado');
+  chk.checked = !!h.no_concretado;
+  sel.value    = h.origen || '';
+
+  chk.onchange = async () => {
+    if(await guardarFicha(h, { no_concretado: chk.checked }, est)) pintarMarcas(fila, h);
+    else chk.checked = !!h.no_concretado;
+  };
+  sel.onchange = async () => {
+    const v = sel.value || null;
+    if(await guardarFicha(h, { origen: v }, est)) pintarMarcas(fila, h);
+    else sel.value = h.origen || '';
+  };
+
+  fila.after(panel);
+}
+
+/* Las marcas que se ven de un vistazo en la lista. */
+function pintarMarcas(fila, h){
+  const n = fila.querySelector('.i-n');
+  [...n.querySelectorAll('.i-marca')].forEach(e => e.remove());
+  if(h.no_concretado){
+    const m = document.createElement('span');
+    m.className = 'i-marca no'; m.textContent = 'no concretado';
+    n.appendChild(m);
+  }
+  if(h.origen){
+    const m = document.createElement('span');
+    m.className = 'i-marca org'; m.textContent = h.origen;
+    n.appendChild(m);
+  }
+}
+
 function filaHistorial(h){
   const div = document.createElement('div');
   div.className = 'item';
   div.innerHTML =
-    '<div class="i-datos"><div class="i-n"></div><div class="i-d"></div></div><div class="i-m"></div>';
+    '<div class="i-datos"><div class="i-n"></div><div class="i-d"></div></div>' +
+    '<div class="i-m"></div><button class="i-ficha" title="Marcar si se concretó y el origen">Ficha</button>';
 
   div.querySelector('.i-n').textContent = 'N° ' + h.numero_presupuesto + ' — ' + (h.cliente_actual || h.txt_cliente || 'sin nombre');
   div.querySelector('.i-d').textContent = [h.txt_vehiculo, h.patente_norm, h.fecha_presupuesto].filter(Boolean).join(' · ');
   div.querySelector('.i-m').textContent = enPesos(h.monto_total);
+  pintarMarcas(div, h);
+
+  div.querySelector('.i-ficha').onclick = e => { e.stopPropagation(); alternarFicha(div, h); };
 
   div.onclick = async () => {
     if(!confirmarDescarte()) return;

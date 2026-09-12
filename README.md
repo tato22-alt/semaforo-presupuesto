@@ -54,6 +54,19 @@ anterior, no crea uno nuevo.
 **Un presupuesto no se puede borrar.** Es un registro histórico a propósito: ni
 siquiera desde el panel de la base se lo elimina en el uso normal.
 
+## Marcar si se concretó, y si fue por seguro
+
+Eso no se sabe cuando emitís el presupuesto, así que no está en el formulario. Se carga
+después, desde **Ver historial**: cada presupuesto tiene un botón **Ficha** que abre dos
+opciones —*No se concretó* y *Origen: particular / siniestro*— y guarda solo.
+
+**No cambia nada del presupuesto ya impreso.** Es información interna del taller: el
+cliente nunca ve si su trabajo entró como siniestro.
+
+Conviene marcarlo cuando se sabe. Con eso, más adelante vas a poder saber qué porcentaje
+de lo que cotizás se convierte en trabajo y cuánto de tu facturación depende de las
+aseguradoras — dos cosas que no se pueden reconstruir para atrás.
+
 ## Descargar CSV
 
 Desde **Acciones → Descargar CSV** se arma una planilla con todo el historial —

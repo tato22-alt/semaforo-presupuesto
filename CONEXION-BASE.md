@@ -98,6 +98,28 @@ Se lee de `vw_presupuestos` (últimos 200, no hay buscador todavía — queda pa
 próxima vuelta si el volumen lo pide). Al abrir un presupuesto del historial para
 reeditarlo se trae también `trabajo_items` con una segunda consulta.
 
+## Ficha interna: lo que no se sabe al emitir
+
+Dos datos del trabajo **no se conocen cuando se emite el presupuesto**, y uno de ellos
+además no debe salir impreso:
+
+- **Si el trabajo se concretó** (`no_concretado`). Se sabe días o semanas después.
+- **Si fue particular o por seguro** (`origen`). El modelo ya lo declara "nulo al nacer"
+  (RF-014), y además es información interna: el cliente no tiene por qué leer "siniestro"
+  en su presupuesto.
+
+Por eso no son campos del formulario. Se cargan **desde el historial**, con el botón
+*Ficha* de cada fila, que abre un panel y guarda cada cambio en el acto con un `PATCH`
+sobre `trabajos`. No toca el número, ni los renglones, ni nada de lo que se imprimió: el
+papel que el cliente ya tiene sigue siendo válido.
+
+En la lista quedan visibles como marcas, para ver de un vistazo cuáles no prosperaron y
+cuáles fueron por seguro.
+
+**Para qué sirve:** son los dos datos que permiten responder qué porcentaje de lo que se
+cotiza se convierte en trabajo, y cuánto de la facturación depende de las aseguradoras.
+Ninguna de las dos se puede reconstruir para atrás si no se registran cuando pasan.
+
 ## Qué falta (documentado en README y en `mejoras-futuras.md` de la base)
 
 - Buscador en el historial.
