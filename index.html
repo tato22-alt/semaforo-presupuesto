@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Presupuesto — Taller El Semáforo</title>
 <link rel="icon" href="logo.png">
+
+<!-- Icono y nombre al agregarla a la pantalla de inicio del celular.
+     iOS no aplica transparencia ni redondea: el icono ya viene cuadrado y con fondo.
+
+     A propósito NO se declara apple-mobile-web-app-capable. Con eso, en iPhone la
+     herramienta abriría sin la barra de Safari — más lindo, pero ahí desaparece el
+     botón de compartir, que es por donde se imprime. Imprimir es lo que esta
+     herramienta hace: vale más eso que sacar una barra. En Android el manifest sí
+     la abre en ventana propia, porque Chrome conserva Imprimir en su menú. -->
+<link rel="apple-touch-icon" href="icono-180.png">
+<meta name="apple-mobile-web-app-title" content="Presupuestos">
+<meta name="theme-color" content="#15181c">
+<link rel="manifest" href="manifest.json">
 <style>
   :root{
     --tinta:#15181c;
@@ -43,9 +56,8 @@
 
   /* ---------- marca de agua ----------
      Disuasivo visual: no impide falsificar —nada impreso lo impide— pero delata
-     la edición casual del PDF y se degrada mal en la fotocopia. Lo que de verdad
-     permite comprobar un falso es el código de verificación, que lo genera la
-     base (feature 003 de gestion-taller-sql-server). */
+     la edición casual del PDF y se degrada mal en la fotocopia. Verificar de
+     verdad un papel es buscar su número en el historial y comparar el monto. */
   .marca{
     position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;
     display:flex;align-items:center;justify-content:center;

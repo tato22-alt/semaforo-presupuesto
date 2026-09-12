@@ -1,0 +1,13 @@
+{
+  "name": "Presupuestos — Taller El Semáforo",
+  "short_name": "Presupuestos",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#eceff3",
+  "theme_color": "#15181c",
+  "icons": [
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
