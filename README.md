@@ -67,6 +67,31 @@ Conviene marcarlo cuando se sabe. Con eso, más adelante vas a poder saber qué 
 de lo que cotizás se convierte en trabajo y cuánto de tu facturación depende de las
 aseguradoras — dos cosas que no se pueden reconstruir para atrás.
 
+## Buscar en el historial
+
+Arriba de la lista hay un buscador. Escribí el **nombre del cliente** (sin importar
+acentos ni mayúsculas: *peña* encuentra a *Peña* y a *Pena*), una **patente** (da igual
+cómo la escribas) o directamente el **número de presupuesto**.
+
+## Resumen del mes
+
+**Acciones → Resumen del mes** te dice cuántos presupuestos emitiste, por cuánto, cómo
+terminaron y cuántos vinieron por seguro — con el mes anterior al lado para comparar.
+
+Los que figuran como *"sin marcar todavía"* son los que les falta la Ficha. Mientras
+queden sin marcar, esos números no dicen toda la verdad.
+
+## Cuando un auto vuelve
+
+Si cargás una patente que ya estuvo en el taller, la herramienta te ofrece traer los
+datos del último presupuesto de ese vehículo: cliente, dirección, teléfono y la
+descripción del auto. Aceptás y te ahorra tipear todo de nuevo.
+
+Además evita algo que se paga caro con el tiempo: **que el mismo cliente termine con
+cuatro fichas distintas.** Si aceptás la propuesta y dejás el nombre como está, se
+actualiza esa ficha. Si el auto cambió de dueño y escribís otro nombre, se crea una
+ficha nueva y la del dueño anterior queda intacta.
+
 ## Descargar CSV
 
 Desde **Acciones → Descargar CSV** se arma una planilla con todo el historial —

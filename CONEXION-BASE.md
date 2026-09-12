@@ -120,9 +120,33 @@ cuáles fueron por seguro.
 cotiza se convierte en trabajo, y cuánto de la facturación depende de las aseguradoras.
 Ninguna de las dos se puede reconstruir para atrás si no se registran cuando pasan.
 
+## Búsqueda, resumen y reconocimiento del vehículo
+
+**Buscador.** Un número busca por `numero_presupuesto`; cualquier otro texto va contra
+`cliente_norm` y `patente_norm` con `ilike`, normalizando en el navegador igual que lo
+hace la base (sin acentos, mayúsculas, espacios colapsados). Pega contra el índice de
+trigramas que existe desde el feature 001. Espera 300 ms entre teclas para no disparar
+una consulta por letra, y descarta respuestas que llegan fuera de orden.
+
+**Resumen del mes.** Una sola consulta desde el primero del mes anterior; el corte entre
+los dos meses se hace en el navegador. Muestra cuántos presupuestos, por cuánto, cómo
+terminaron y de dónde vienen, con el mes anterior al lado. Dice explícitamente cuántos
+están sin marcar, porque un número calculado sobre datos a medias engaña más que no
+tenerlo.
+
+**Reconocimiento por patente (RF-012).** Al salir del campo patente, si el vehículo ya
+existe se propone el último cliente conocido (`vehiculos.id_cliente_ultimo`, que el
+modelo declara "sólo para proponerlo"). Sin esto, cada presupuesto creaba una ficha de
+cliente nueva y en meses habría cuatro "Juan Pérez" que no son la misma persona — y
+fusionar fichas mal no tiene vuelta atrás.
+
+La regla al guardar es conservadora: se reusa esa ficha **sólo si el nombre en pantalla
+sigue siendo el propuesto**. Si cambió —el auto se vendió— se crea una ficha nueva, para
+no pisar el nombre del dueño anterior. Las dos ramas están cubiertas por
+`probar-patente.js`.
+
 ## Qué falta (documentado en README y en `mejoras-futuras.md` de la base)
 
-- Buscador en el historial.
 - Marcar un presupuesto como "no concretado" desde la interfaz.
 - Concurrencia: si dos personas reeditan el mismo presupuesto a la vez, gana el último
   que guarda — no hay bloqueo optimista. Sin uso real todavía para que esto importe.
