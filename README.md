@@ -33,9 +33,14 @@ lleven el mismo número. Por eso la numeración puede tener algún hueco.
 
 ## Campos obligatorios
 
-Antes de guardar, la herramienta pide: **fecha, cliente con dirección y teléfono, y
-mano de obra mayor a cero**. Los renglones de repuestos son opcionales — a veces el
-trabajo es sólo mano de obra.
+Antes de guardar, la herramienta pide: **fecha, cliente con teléfono, y mano de obra
+mayor a cero**. Los renglones de repuestos son opcionales — a veces el trabajo es sólo
+mano de obra.
+
+**El N° de chasis y las Observaciones no son obligatorios.** El chasis no siempre se
+tiene a mano, y las observaciones casi siempre van vacías: son para cuando hace falta
+aclarar algo (un plazo, una condición, que el trabajo queda sujeto a revisión al
+desarmar).
 
 ## Guardar y hacer PDF
 
@@ -76,8 +81,8 @@ cómo la escribas) o directamente el **número de presupuesto**.
 ## Cuando un auto vuelve
 
 Si cargás una patente que ya estuvo en el taller, la herramienta te ofrece traer los
-datos del último presupuesto de ese vehículo: cliente, dirección, teléfono y la
-descripción del auto. Aceptás y te ahorra tipear todo de nuevo.
+datos del último presupuesto de ese vehículo: cliente, teléfono, la descripción del
+auto y su número de chasis. Aceptás y te ahorra tipear todo de nuevo.
 
 Además evita algo que se paga caro con el tiempo: **que el mismo cliente termine con
 cuatro fichas distintas.** Si aceptás la propuesta y dejás el nombre como está, se

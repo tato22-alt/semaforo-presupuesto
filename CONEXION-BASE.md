@@ -80,6 +80,19 @@ que hace. Si un paso falla después de que otro ya escribió, no hay rollback re
 Cada paso que falla se lo dice a quien está cargando, con el número de presupuesto de
 por medio si ya se asignó, para que sepa qué reabrir.
 
+## N° de chasis y observaciones (feature 004)
+
+El presupuesto dejó de pedir la dirección del cliente y pide el **número de chasis**, con
+un renglón de **observaciones** debajo. No fue un cambio de rótulo: son columnas nuevas
+(`vehiculos.chasis`, `trabajos.txt_chasis`, `trabajos.observaciones`), porque seguir
+escribiendo en `clientes.direccion` habría guardado chasis como domicilios.
+
+Ninguno de los dos es obligatorio. El chasis se propone solo cuando el auto ya estuvo,
+igual que el cliente. `clientes.direccion` sigue existiendo y la aplicación El Semáforo
+puede usarla; esta herramienta ya no la escribe.
+
+**El CSV cambió de columnas:** `direccion` pasó a `chasis`, y se agregó `observaciones`.
+
 ## Campos obligatorios (RF-024)
 
 La base los reporta pero no los exige (`vw_presupuestos_incompletos`). Esta página sí

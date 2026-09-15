@@ -352,10 +352,11 @@
 
   <section class="datos">
     <div class="campo ancho"><label for="cliente">Señor</label><input id="cliente" autocomplete="off"></div>
-    <div class="campo ancho"><label for="direccion">Dirección</label><input id="direccion" autocomplete="off"></div>
+    <div class="campo ancho"><label for="chasis">N° de chasis</label><input id="chasis" autocomplete="off" style="text-transform:uppercase"></div>
     <div class="campo"><label for="vehiculo">Vehículo</label><input id="vehiculo" autocomplete="off"></div>
     <div class="campo"><label for="patente">Patente</label><input id="patente" autocomplete="off" style="text-transform:uppercase"></div>
     <div class="campo ancho"><label for="telefono">Teléfono</label><input id="telefono" inputmode="tel" autocomplete="off"></div>
+    <div class="campo ancho"><label for="observaciones">Observaciones</label><input id="observaciones" autocomplete="off"></div>
   </section>
 
   <div class="caja">
@@ -416,15 +417,16 @@
 const SUPABASE_URL = 'https://osslhkvdclrbukjqwpnt.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_MV1IZ770uuRM2bUmZqmuWA_mdicKzXw';
 const CLAVE_SESION = 'semaforo-sesion';
-const CAMPOS = ['fecha','cliente','direccion','vehiculo','patente','telefono'];
+const CAMPOS = ['fecha','cliente','chasis','vehiculo','patente','telefono','observaciones'];
 const MAX_HISTORIAL = 200;
 
 /* Columnas del CSV de respaldo, en orden. TEXTO marca cuáles se escapan como texto:
    una celda de texto que arranque con = + - @ la toma Excel como fórmula. */
-const COLUMNAS = ['numero_presupuesto','fecha_consulta','nombre_cliente','direccion','telefono',
+const COLUMNAS = ['numero_presupuesto','fecha_consulta','nombre_cliente','chasis','telefono',
                   'vehiculo','patente','detalle','importe',
-                  'subtotal_repuestos','monto_mano_obra','monto_total','creado_en','modificado_en'];
-const TEXTO = [false,true,true,true,true,true,true,true,false,false,false,false,true,true];
+                  'subtotal_repuestos','monto_mano_obra','monto_total','observaciones',
+                  'creado_en','modificado_en'];
+const TEXTO = [false,true,true,true,true,true,true,true,false,false,false,false,true,true,true];
 
 const $ = id => document.getElementById(id);
 
@@ -653,8 +655,9 @@ function trabajoAFormulario(t){
   return {
     id_trabajo: t.id_trabajo, id_cliente: t.id_cliente, id_vehiculo: t.id_vehiculo,
     numero: t.numero_presupuesto, fecha: t.fecha_presupuesto || '',
-    cliente: t.txt_cliente || '', direccion: t.txt_direccion || '',
+    cliente: t.txt_cliente || '', chasis: t.txt_chasis || '',
     telefono: t.txt_telefono || '', vehiculo: t.txt_vehiculo || '', patente: t.txt_patente || '',
+    observaciones: t.observaciones || '',
     monto_mano_obra: t.monto_mano_obra || 0, items, creado_en: t.creado_en
   };
 }
@@ -668,13 +671,13 @@ async function guardarEnBase(p){
   if(id_cliente){
     const r = await api('/rest/v1/clientes?id_cliente=eq.' + id_cliente, {
       method: 'PATCH',
-      body: JSON.stringify({ nombre: p.cliente, telefono: p.telefono || null, direccion: p.direccion || null })
+      body: JSON.stringify({ nombre: p.cliente, telefono: p.telefono || null })
     });
     if(!r.ok) throw new Error('No se pudo actualizar el cliente');
   }else{
     const r = await api('/rest/v1/clientes', {
       method: 'POST', headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({ nombre: p.cliente, telefono: p.telefono || null, direccion: p.direccion || null })
+      body: JSON.stringify({ nombre: p.cliente, telefono: p.telefono || null })
     });
     if(!r.ok) throw new Error('No se pudo crear el cliente');
     const filas = await leerJSON(r);
@@ -691,7 +694,8 @@ async function guardarEnBase(p){
     }else{
       const r = await api('/rest/v1/vehiculos', {
         method: 'POST', headers: { Prefer: 'return=representation' },
-        body: JSON.stringify({ patente: p.patente, descripcion: p.vehiculo || null, id_cliente_ultimo: id_cliente })
+        body: JSON.stringify({ patente: p.patente, descripcion: p.vehiculo || null,
+                               chasis: p.chasis || null, id_cliente_ultimo: id_cliente })
       });
       if(!r.ok) throw new Error('No se pudo crear el vehículo');
       const filas = await leerJSON(r);
@@ -703,8 +707,9 @@ async function guardarEnBase(p){
 
   const datosTrabajo = {
     id_cliente, id_vehiculo, fecha_presupuesto: p.fecha || null,
-    txt_cliente: p.cliente, txt_direccion: p.direccion || null, txt_telefono: p.telefono || null,
+    txt_cliente: p.cliente, txt_telefono: p.telefono || null,
     txt_vehiculo: p.vehiculo || null, txt_patente: p.patente || null,
+    txt_chasis: p.chasis || null, observaciones: p.observaciones || null,
     monto_mano_obra: p.monto_mano_obra, modificado_en: new Date().toISOString()
   };
 
@@ -836,7 +841,6 @@ function camposFaltantes(p){
   const faltan = [];
   if(!p.fecha)                 faltan.push('la fecha');
   if(!p.cliente)                faltan.push('el nombre del cliente');
-  if(!p.direccion)              faltan.push('la dirección');
   if(!p.telefono)               faltan.push('el teléfono');
   if(!(p.monto_mano_obra > 0))  faltan.push('la mano de obra');
   return faltan;
@@ -892,7 +896,7 @@ async function proponerPorPatente(patente){
   if($('cliente').value.trim()) return;          // ya hay un cliente cargado: no molestar
   try{
     const r = await api('/rest/v1/vehiculos?patente_norm=eq.' + encodeURIComponent(patente) +
-                        '&select=descripcion,clientes(id_cliente,nombre,telefono,direccion)');
+                        '&select=descripcion,chasis,clientes(id_cliente,nombre,telefono)');
     if(!r.ok) return;
     const filas = await leerJSON(r) || [];
     const v = filas[0];
@@ -901,10 +905,10 @@ async function proponerPorPatente(patente){
     if(!confirm('Este vehículo ya estuvo en el taller.\n\n' + c.nombre +
                 (v.descripcion ? '\n' + v.descripcion : '') +
                 '\n\n¿Usar estos datos?')) return;
-    $('cliente').value   = c.nombre || '';
-    $('direccion').value = c.direccion || '';
-    $('telefono').value  = c.telefono || '';
+    $('cliente').value  = c.nombre || '';
+    $('telefono').value = c.telefono || '';
     if(!$('vehiculo').value.trim()) $('vehiculo').value = v.descripcion || '';
+    if(!$('chasis').value.trim())   $('chasis').value   = v.chasis || '';
     clienteSugerido = { id: c.id_cliente, nombre: c.nombre || '' };
     sucio = true;
     avisar('Datos traídos del último presupuesto de este vehículo');
@@ -981,9 +985,10 @@ const celdaTexto    = v => {
 const filaCSV = valores => valores.map((v, i) => TEXTO[i] ? celdaTexto(v) : celdaNumero(v)).join(';');
 
 function filasDe(p){
-  const izq = [p.numero_presupuesto, p.fecha_presupuesto, p.cliente_actual || p.txt_cliente, p.txt_direccion,
+  const izq = [p.numero_presupuesto, p.fecha_presupuesto, p.cliente_actual || p.txt_cliente, p.txt_chasis,
                p.txt_telefono, p.txt_vehiculo, p.patente_norm || p.txt_patente];
-  const der = [p.subtotal_conceptos, p.monto_mano_obra, p.monto_total, p.creado_en, p.modificado_en];
+  const der = [p.subtotal_conceptos, p.monto_mano_obra, p.monto_total, p.observaciones,
+               p.creado_en, p.modificado_en];
   const items = (p.items || []).map(i => [...izq, i.detalle, i.importe, ...der]);
   if(p.monto_mano_obra) items.push([...izq, 'Mano de obra', p.monto_mano_obra, ...der]);
   if(!items.length)     items.push([...izq, '', '', ...der]);
@@ -1002,8 +1007,9 @@ async function descargarCSV(){
     completos.forEach((t, i) => {
       if(!t) return;
       const items = (t.trabajo_items || []).slice().sort((a, b) => a.orden - b.orden);
-      filasDe({ ...historial[i], txt_direccion: t.txt_direccion, txt_telefono: t.txt_telefono,
-                creado_en: t.creado_en, modificado_en: t.modificado_en, items }).forEach(f => filas.push(filaCSV(f)));
+      filasDe({ ...historial[i], txt_chasis: t.txt_chasis, txt_telefono: t.txt_telefono,
+                observaciones: t.observaciones, creado_en: t.creado_en,
+                modificado_en: t.modificado_en, items }).forEach(f => filas.push(filaCSV(f)));
     });
     bajarArchivo('﻿' + filas.join('\n'), 'text/csv;charset=utf-8',
                  'presupuestos_el_semaforo_' + hoyISO() + '.csv');
@@ -1215,6 +1221,7 @@ $('add').onclick      = () => { sucio = true; agregarRenglon().querySelector('.d
 $('mo').oninput       = () => { sucio = true; calcular(); };
 $('mo').onblur        = () => { $('mo').value = conMiles(aNumero($('mo').value)); calcular(); };
 $('fecha').onchange   = () => { sucio = true; pintarFecha(); };
+$('chasis').onblur    = e => { e.target.value = e.target.value.trim().toUpperCase(); };
 $('patente').onblur   = async e => {
   e.target.value = normalizarPatente(e.target.value);
   if(e.target.value && !patenteFormatoValido(e.target.value)) avisar('Formato de patente inusual — revisala');
