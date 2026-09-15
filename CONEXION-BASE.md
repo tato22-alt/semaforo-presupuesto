@@ -96,8 +96,8 @@ puede usarla; esta herramienta ya no la escribe.
 ## Campos obligatorios (RF-024)
 
 La base los reporta pero no los exige (`vw_presupuestos_incompletos`). Esta página sí
-los exige antes de guardar: fecha, cliente (nombre, dirección, teléfono) y mano de obra
-mayor a cero. Los renglones de repuestos son opcionales.
+los exige antes de guardar: fecha, cliente (nombre y teléfono) y mano de obra mayor a
+cero. Los renglones de repuestos, el chasis y las observaciones son opcionales.
 
 ## Formato de patente (RF-022)
 
@@ -107,9 +107,9 @@ bloquea) si la patente cargada no encaja en ninguno de los dos formatos.
 
 ## Historial
 
-Se lee de `vw_presupuestos` (últimos 200, no hay buscador todavía — queda para una
-próxima vuelta si el volumen lo pide). Al abrir un presupuesto del historial para
-reeditarlo se trae también `trabajo_items` con una segunda consulta.
+Se lee de `vw_presupuestos` (últimos 200, o los que coincidan con la búsqueda). Al abrir
+un presupuesto del historial para reeditarlo se trae también `trabajo_items` con una
+segunda consulta.
 
 ## Ficha interna: lo que no se sabe al emitir
 
