@@ -813,8 +813,14 @@ const renglones = () => [...$('items').children];
    corta cada renglón: al girar el celular, al imprimir, al agrandar la ventana. */
 function ajustarAlto(t){
   if(!t) return;
+  const previo = t.style.height;
   t.style.height = 'auto';
-  t.style.height = t.scrollHeight + 'px';
+  const alto = t.scrollHeight;
+  /* Un elemento que todavía no se dibujó —la app arranca oculta— mide CERO. Si le
+     pusiéramos ese alto quedaría una tira de un píxel: invisible, imposible de
+     pinchar, y sin forma de arreglarse sola, porque para crecer necesita que
+     alguien escriba en ella. Ante un cero se deja el alto como estaba. */
+  t.style.height = alto > 0 ? alto + 'px' : previo;
 }
 const ajustarTodo = () => [...document.querySelectorAll('textarea.det,textarea.mo-det')].forEach(ajustarAlto);
 
@@ -1454,6 +1460,8 @@ async function entrarALaApp(){
     if(!sucio) irANuevo();
     $('carga').classList.remove('abierto');
     $('app').hidden = false;
+    /* Recién ahora los campos tienen medidas de verdad. */
+    ajustarTodo();
     window.scrollTo(0, 0);
   }catch(e){
     if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
