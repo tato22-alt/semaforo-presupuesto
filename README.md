@@ -51,6 +51,27 @@ tiene a mano, y las observaciones casi siempre van vacías: son para cuando hace
 aclarar algo (un plazo, una condición, que el trabajo queda sujeto a revisión al
 desarmar).
 
+## Dejarlo pendiente y terminarlo después
+
+Cuando tomás el auto y falta el precio de un repuesto, o hay que verlo desarmado para
+poner la mano de obra, **no hace falta terminarlo ahí**. Con **Acciones → Dejar
+pendiente** se guarda como está. Lo único que pide es **el nombre del cliente**, para
+poder encontrarlo después.
+
+Un pendiente **no gasta número**: aparece como `N° —` y la hoja, si la imprimís, sale
+marcada **SIN EMITIR**. Si al final no va a ningún lado, lo descartás y no queda ningún
+hueco en la numeración.
+
+Lo terminás abriéndolo desde **Ver historial** —los pendientes salen arriba de todo,
+marcados— completando lo que faltaba y guardando como siempre. Ahí recibe su número. Es
+el mismo presupuesto, no uno nuevo.
+
+**Un pendiente sí se puede descartar** (Ficha → Descartar), justamente porque nunca tuvo
+número. Uno ya emitido no: eso no cambió, y la que lo impide es la base, no la página.
+
+Sobre un presupuesto ya emitido, ese mismo botón pasa a decir **Guardar cambios**: sirve
+para corregir algo sin tener que volver a imprimirlo.
+
 ## Guardar y hacer PDF
 
 Guardar hace varias llamadas a la base (cliente, vehículo, presupuesto y renglones),

@@ -210,6 +210,7 @@
            text-transform:uppercase;padding:1px 5px;margin-left:6px;vertical-align:1px}
   .i-marca.no{background:#fdecef;color:#8c0f2c}
   .i-marca.org{background:#eef1f4;color:var(--tenue)}
+  .i-marca.pend{background:#fff4e0;color:#8a5200}
   .i-ficha{border:1px solid var(--linea);background:#fff;color:var(--tenue);font:inherit;
            font-size:11px;font-weight:700;padding:5px 9px;cursor:pointer;flex:none}
   .i-ficha:hover{border-color:var(--naranja);color:var(--naranja)}
@@ -218,6 +219,10 @@
   .ficha label{font-size:12.5px;display:flex;align-items:center;gap:6px;color:var(--tinta)}
   .ficha select{font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid var(--linea);background:#fff}
   .ficha .f-estado{font-size:11.5px;color:var(--verde);font-weight:700}
+  .ficha .f-nota{font-size:12.5px;color:var(--tenue)}
+  .f-descartar{border:1px solid #f0c7cf;background:#fff;color:var(--rojo);font:inherit;
+               font-size:12.5px;font-weight:600;padding:6px 11px;cursor:pointer}
+  .f-descartar:hover{background:#fdecef}
 
   /* ---------- modales chicos: login, carga ---------- */
   .modal.centrado.abierto{align-items:center}
@@ -423,6 +428,7 @@
 <nav class="acciones" id="acciones">
   <div class="menu">
     <button id="b-pdf" class="principal">Guardar y hacer PDF</button>
+    <button id="b-pend">Dejar pendiente</button>
     <button id="b-nuevo">Nuevo presupuesto</button>
     <button id="b-hist">Ver historial</button>
     <button id="b-csv">Descargar CSV</button>
@@ -672,7 +678,9 @@ async function pedirHistorial(busqueda){
     'cliente_actual,txt_cliente,patente_norm,txt_vehiculo,monto_total,id_cliente,id_vehiculo,' +
     'no_concretado,origen,cliente_norm' +
     filtroBusqueda(busqueda || '') +
-    '&order=numero_presupuesto.desc&limit=' + MAX_HISTORIAL);
+    /* nullsfirst explícito: los pendientes no tienen número y van arriba de todo,
+       que es donde hacen falta. Sin esto queda librado al orden por defecto. */
+    '&order=numero_presupuesto.desc.nullsfirst&limit=' + MAX_HISTORIAL);
   if(!r.ok) throw new Error('No se pudo leer el historial');
   return await leerJSON(r) || [];
 }
@@ -705,7 +713,9 @@ function trabajoAFormulario(t){
    "Guardado". Si un paso falla después de que otro ya escribió, no hay rollback:
    un cliente o vehículo de más es inofensivo; un presupuesto sin renglones se
    recupera reabriéndolo. Cada error dice en qué paso se cortó. */
-async function guardarEnBase(p){
+/* emitir=false deja el trabajo pendiente: se guarda igual pero NO se le pide número
+   a la base (RF-502). Un pendiente abandonado no puede dejar un hueco en el talonario. */
+async function guardarEnBase(p, emitir = true){
   let id_cliente = p.id_cliente || null;
   if(id_cliente){
     const r = await api('/rest/v1/clientes?id_cliente=eq.' + id_cliente, {
@@ -755,34 +765,41 @@ async function guardarEnBase(p){
 
   let id_trabajo = p.id_trabajo || null;
   let numero = p.numero;
+
+  /* El número se pide una sola vez en la vida de un trabajo: cuando se emite. Ni al
+     abrir la herramienta, ni al dejarlo pendiente, ni al reeditar uno ya emitido
+     —pedirlo lo gasta para siempre—. Y se pide acá, después del cliente y el
+     vehículo, para no gastarlo si esos pasos fallan. */
+  const estrenaNumero = emitir && numero == null;
+  if(estrenaNumero) numero = await pedirProximoNumero();
+  const nombre = numero != null ? 'El presupuesto N° ' + numero : 'El pendiente';
+
   if(id_trabajo){
+    const cambio = estrenaNumero ? { ...datosTrabajo, numero_presupuesto: numero } : datosTrabajo;
     const r = await api('/rest/v1/trabajos?id_trabajo=eq.' + id_trabajo, {
-      method: 'PATCH', body: JSON.stringify(datosTrabajo)
+      method: 'PATCH', body: JSON.stringify(cambio)
     });
-    if(!r.ok) throw new Error('El presupuesto N° ' + numero + ' no se pudo actualizar');
+    if(!r.ok) throw new Error(nombre + ' no se pudo actualizar');
   }else{
-    /* El número se pide recién acá, no al abrir la herramienta: pedirlo lo gasta
-       para siempre, y abrir la página diez veces no puede costar diez números.
-       Pedirlo después del cliente y el vehículo también evita gastarlo si esos
-       pasos fallan. */
-    numero = await pedirProximoNumero();
+    const nuevo = { ...datosTrabajo, origen_carga: 'presupuesto_web' };
+    if(numero != null) nuevo.numero_presupuesto = numero;
     const r = await api('/rest/v1/trabajos', {
       method: 'POST', headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({ ...datosTrabajo, numero_presupuesto: numero, origen_carga: 'presupuesto_web' })
+      body: JSON.stringify(nuevo)
     });
-    if(!r.ok) throw new Error('El presupuesto N° ' + numero + ' no se pudo guardar');
+    if(!r.ok) throw new Error(nombre + ' no se pudo guardar');
     const filas = await leerJSON(r);
     id_trabajo = filas && filas[0] && filas[0].id_trabajo;
   }
 
   if(p.id_trabajo){
     const del = await api('/rest/v1/trabajo_items?id_trabajo=eq.' + id_trabajo, { method: 'DELETE' });
-    if(!del.ok) throw new Error('El N° ' + numero + ' se guardó pero los renglones anteriores no se pudieron reemplazar');
+    if(!del.ok) throw new Error(nombre + ' se guardó pero los renglones anteriores no se pudieron reemplazar');
   }
   if(p.items.length){
     const filas = p.items.map((it, i) => ({ id_trabajo, orden: i, detalle: it.detalle, importe: it.importe }));
     const r = await api('/rest/v1/trabajo_items', { method: 'POST', body: JSON.stringify(filas) });
-    if(!r.ok) throw new Error('El N° ' + numero + ' se guardó pero los renglones no. Reabrilo del historial y guardá de nuevo');
+    if(!r.ok) throw new Error(nombre + ' se guardó pero los renglones no. Reabrilo del historial y guardá de nuevo');
   }
 
   return { id_trabajo, id_cliente, id_vehiculo, numero };
@@ -911,7 +928,9 @@ function leerFormulario(){
   return p;
 }
 
-/* RF-024: la base lo permite, esta página lo exige antes de guardar. */
+/* RF-024: la base lo permite, esta página lo exige antes de EMITIR. Un pendiente
+   todavía no se emitió, así que sólo pide lo mínimo para poder encontrarlo después
+   en el historial: de quién es (RF-503). */
 function camposFaltantes(p){
   const faltan = [];
   if(!p.fecha)                 faltan.push('la fecha');
@@ -947,6 +966,7 @@ function mostrar(p){
   items.forEach(i => agregarRenglon(i.detalle || '', i.importe || ''));
   calcular();
   pintarMarca();
+  pintarBotones();
   clienteSugerido = null;
   sucio = false;
 }
@@ -1027,6 +1047,7 @@ async function guardarYPdf(){
     $('nro').textContent = numeroActual;   // tiene que estar en pantalla antes de imprimir
     $('nro-aviso').hidden = true;
     pintarMarca();
+    pintarBotones();
     sucio = false;
     avisar('Guardado con el N° ' + numeroActual + '. Elegí "Guardar como PDF"');
     if(document.activeElement) document.activeElement.blur();
@@ -1038,6 +1059,45 @@ async function guardarYPdf(){
     boton.disabled = false;
     boton.textContent = 'Guardar y hacer PDF';
   }
+}
+
+/* Deja el trabajo a medio armar guardado y sin número: esperando el precio de un
+   repuesto, o el auto desarmado para poner la mano de obra (RF-501). Se termina
+   reabriéndolo del historial y guardándolo como siempre. */
+async function guardarPendiente(){
+  cerrarMenu();
+  const p = leerFormulario();
+  if(!p.cliente) return avisar('Para dejarlo pendiente hace falta al menos el nombre del cliente');
+  if(p.items.some(i => i.importe < 0)) return avisar('Hay un renglón con importe negativo');
+
+  const boton = $('b-pend');
+  const rotulo = boton.textContent;
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+  try{
+    const resultado = await guardarEnBase(p, false);
+    idTrabajoActual  = resultado.id_trabajo;
+    idClienteActual  = resultado.id_cliente;
+    idVehiculoActual = resultado.id_vehiculo;
+    numeroActual     = resultado.numero;
+    sucio = false;
+    pintarBotones();
+    avisar(numeroActual != null
+      ? 'Cambios guardados en el N° ' + numeroActual
+      : 'Guardado como pendiente. Lo terminás desde "Ver historial"');
+  }catch(e){
+    if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
+    avisar(e.message || 'No se pudo guardar');
+  }finally{
+    boton.disabled = false;
+    boton.textContent = rotulo;
+  }
+}
+
+/* Un presupuesto ya emitido no se "deja pendiente": ese botón pasa a ser guardar
+   los cambios sin obligar a imprimir de nuevo. */
+function pintarBotones(){
+  $('b-pend').textContent = numeroActual != null ? 'Guardar cambios' : 'Dejar pendiente';
 }
 
 /* ===================== archivos (CSV de respaldo) =====================
@@ -1125,10 +1185,55 @@ async function guardarFicha(h, cambio, donde){
   }
 }
 
+/* Descarta un pendiente. La base sólo deja borrar los que no tienen número
+   (RF-507): un presupuesto emitido no se borra nunca, ni desde acá.
+
+   Ojo con el resultado: cuando la política restrictiva lo impide, PostgREST NO
+   devuelve error — borra cero filas y contesta que todo salió bien. Por eso se
+   pide la fila de vuelta y se comprueba que haya venido algo. */
+async function descartarPendiente(fila, h, donde){
+  if(!confirm('¿Descartar este pendiente?\n\n' + (h.cliente_actual || h.txt_cliente || 'sin nombre') +
+              '\n\nNo tiene número asignado, así que no deja hueco en la numeración. No se puede deshacer.'))
+    return;
+  donde.textContent = 'descartando…';
+  donde.style.color = 'var(--tenue)';
+  try{
+    const r = await api('/rest/v1/trabajos?id_trabajo=eq.' + h.id_trabajo, {
+      method: 'DELETE', headers: { Prefer: 'return=representation' }
+    });
+    if(!r.ok) throw new Error('No se pudo descartar');
+    const borradas = await leerJSON(r) || [];
+    if(!borradas.length) throw new Error('La base no lo borró — revisá si ya tiene número');
+    const panel = fila.nextElementSibling;
+    if(panel && panel.classList.contains('ficha')) panel.remove();
+    fila.remove();
+    avisar('Pendiente descartado');
+  }catch(e){
+    if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
+    donde.textContent = e.message || 'no se pudo descartar';
+    donde.style.color = 'var(--rojo)';
+  }
+}
+
 /* Abre o cierra el panel debajo de la fila. */
 function alternarFicha(fila, h){
   const abierta = fila.nextElementSibling && fila.nextElementSibling.classList.contains('ficha');
   if(abierta){ fila.nextElementSibling.remove(); return; }
+
+  /* Un pendiente todavía no se emitió: si se concretó o si va por seguro son
+     preguntas que no corresponden hacerle. Lo único que se puede hacer con él es
+     terminarlo —abriéndolo— o descartarlo. */
+  if(h.numero_presupuesto == null){
+    const panel = document.createElement('div');
+    panel.className = 'ficha';
+    panel.innerHTML = '<span class="f-nota">Todavía sin emitir. Abrilo para terminarlo.</span>' +
+                      '<button class="f-descartar">Descartar</button><span class="f-estado"></span>';
+    panel.onclick = e => e.stopPropagation();
+    const est = panel.querySelector('.f-estado');
+    panel.querySelector('.f-descartar').onclick = () => descartarPendiente(fila, h, est);
+    fila.after(panel);
+    return;
+  }
 
   const panel = document.createElement('div');
   panel.className = 'ficha';
@@ -1165,6 +1270,11 @@ function alternarFicha(fila, h){
 function pintarMarcas(fila, h){
   const n = fila.querySelector('.i-n');
   [...n.querySelectorAll('.i-marca')].forEach(e => e.remove());
+  if(h.numero_presupuesto == null){
+    const m = document.createElement('span');
+    m.className = 'i-marca pend'; m.textContent = 'pendiente';
+    n.appendChild(m);
+  }
   if(h.no_concretado){
     const m = document.createElement('span');
     m.className = 'i-marca no'; m.textContent = 'no concretado';
@@ -1184,7 +1294,9 @@ function filaHistorial(h){
     '<div class="i-datos"><div class="i-n"></div><div class="i-d"></div></div>' +
     '<div class="i-m"></div><button class="i-ficha" title="Marcar si se concretó y el origen">Ficha</button>';
 
-  div.querySelector('.i-n').textContent = 'N° ' + h.numero_presupuesto + ' — ' + (h.cliente_actual || h.txt_cliente || 'sin nombre');
+  const quien = h.cliente_actual || h.txt_cliente || 'sin nombre';
+  div.querySelector('.i-n').textContent =
+    (h.numero_presupuesto != null ? 'N° ' + h.numero_presupuesto : 'Sin emitir') + ' — ' + quien;
   div.querySelector('.i-d').textContent = [h.txt_vehiculo, h.patente_norm, h.fecha_presupuesto].filter(Boolean).join(' · ');
   div.querySelector('.i-m').textContent = enPesos(h.monto_total);
   pintarMarcas(div, h);
@@ -1275,6 +1387,7 @@ async function intentarLogin(){
 /* ===================== conexiones ===================== */
 $('b-menu').onclick  = () => $('acciones').classList.toggle('abierto');
 $('b-pdf').onclick   = guardarYPdf;
+$('b-pend').onclick  = guardarPendiente;
 $('b-csv').onclick   = descargarCSV;
 $('b-hist').onclick  = abrirHistorial;
 /* Espera a que se deje de tipear para no disparar una consulta por tecla. */
