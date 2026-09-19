@@ -31,6 +31,15 @@ Si un guardado falla a mitad de camino, ese número sí queda usado y el siguien
 de largo. Es a propósito: es la única forma de garantizar que dos presupuestos nunca
 lleven el mismo número. Por eso la numeración puede tener algún hueco.
 
+## Qué dice cada renglón
+
+El renglón de **Mano de obra** tiene un espacio para escribir qué trabajo incluye
+—"desabollado y pintura de tres paños, con pulido"— al lado de su importe. No es
+obligatorio: si se deja vacío, la hoja sale como siempre, sólo con "Mano de obra".
+
+Tanto ahí como en los renglones de repuestos, el texto **baja de renglón solo**: lo
+que se escribe se lee entero en el papel, por largo que sea.
+
 ## Campos obligatorios
 
 Antes de guardar, la herramienta pide: **fecha, cliente con teléfono, y mano de obra
@@ -49,6 +58,23 @@ no una sola. Si alguna falla a mitad de camino, la herramienta lo avisa con el n
 de presupuesto de por medio — no queda nada guardado a medias sin que se note. El
 número reservado no se pierde: si el guardado falló, se puede reabrir el mismo
 presupuesto desde el historial y volver a intentar.
+
+## Lo que protege la hoja impresa
+
+Tres cosas, y ninguna impide falsificar un papel —nada impreso lo impide—: lo que
+hacen es que la adulteración se note.
+
+- **El total en letras**, debajo de la cifra. Es la defensa vieja y la mejor: cambiar
+  "$473.000" es fácil, cambiar también "Cuatrocientos setenta y tres mil" sin que se
+  note, no.
+- **El microtexto pegado al total**: una tira diminuta que repite número, importe y
+  fecha. Para alterar la cifra hay que rehacer también esa tira, y a ese cuerpo de
+  letra no se empareja a ojo. Fotocopiado se empasta, que ya es una señal.
+- **La marca de agua** en diagonal sobre toda la hoja, con el nombre, el CUIT y el
+  número. Si el presupuesto todavía no se guardó, dice **SIN EMITIR**.
+
+Verificar de verdad un papel sigue siendo lo mismo: buscar ese número en el historial
+y comparar el monto.
 
 ## Historial
 

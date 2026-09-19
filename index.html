@@ -63,8 +63,8 @@
     display:flex;align-items:center;justify-content:center;
   }
   .marca span{
-    width:170%;transform:rotate(-27deg);text-align:center;word-break:break-all;
-    font-size:12px;font-weight:800;letter-spacing:2.5px;line-height:3.1;
+    width:190%;transform:rotate(-30deg);text-align:center;word-break:break-all;
+    font-size:11px;font-weight:800;letter-spacing:2.2px;line-height:5;
     color:rgba(21,24,28,.05);
   }
   /* el contenido va por encima de la marca */
@@ -114,8 +114,20 @@
   tbody input,tfoot input{width:100%;border:0;background:transparent;font-size:var(--txt-campo);padding:8px}
   tbody input:focus,tfoot input:focus{outline:0;background:#fff8e6}
   td.imp input{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+
+  /* El detalle es un textarea, no un input: un input de una línea recorta lo que
+     no entra y en el papel eso no se puede leer ni desplazar. Acá el texto baja
+     de renglón y el alto lo ajusta ajustarAlto() a medida que se escribe. */
+  textarea.det,textarea.mo-det{
+    width:100%;border:0;background:transparent;font:inherit;font-size:var(--txt-campo);
+    line-height:1.35;padding:8px;resize:none;overflow:hidden;display:block;
+  }
+  textarea.det:focus,textarea.mo-det:focus{outline:0;background:#fff8e6}
+
   tfoot .r-mo td{border-top:1.5px solid var(--tinta);border-bottom:0}
-  tfoot .r-mo span{display:block;padding:8px;font-size:var(--txt-campo);font-weight:700}
+  .mo-cel{padding:8px 0 4px}
+  .mo-cel span{display:block;padding:0 8px;font-size:var(--txt-campo);font-weight:700}
+  textarea.mo-det{padding:1px 8px 0;color:var(--tenue)}
   tfoot .r-mo input{font-weight:700}
   .quitar{width:100%;border:0;background:transparent;color:#c3c9d0;font-size:18px;line-height:1;padding:7px 0;cursor:pointer}
   .quitar:hover{color:var(--rojo)}
@@ -133,6 +145,17 @@
   .fila b{font-variant-numeric:tabular-nums;font-weight:700}
   .letras{margin-top:9px;font-size:11px;color:var(--tenue);text-align:right}
   .letras span{color:var(--tinta)}
+
+  /* ---------- microtexto de control ----------
+     Una tira de texto diminuto pegada al total, repitiendo número + importe +
+     fecha. Ahí es donde se falsifica un presupuesto: en la cifra. Para cambiarla
+     hay que rehacer también esta tira, y a este cuerpo no se empareja a ojo.
+     Fotocopiada se empasta, que es en sí una señal. */
+  .micro{
+    margin-top:6px;height:15px;overflow:hidden;word-break:break-all;
+    font-size:4.6px;line-height:1.55;letter-spacing:.1px;font-weight:700;
+    color:rgba(21,24,28,.5);user-select:none;
+  }
 
   /* ---------- menú de acciones ---------- */
   .acciones{
@@ -285,12 +308,23 @@
     #fecha-txt{display:inline-block;width:106px;text-align:center}
     thead th{font-size:12.5px}
     thead th{padding:5px 10px}
-    tbody input,tfoot input,tfoot .r-mo span{padding:7px 13px;font-size:15px}
+    tbody input,tfoot input{padding:7px 13px;font-size:15px}
+    textarea.det,textarea.mo-det{padding:7px 13px;font-size:15px}
+    .mo-cel{padding:7px 0 5px}
+    .mo-cel span{padding:0 13px;font-size:15px}
+    textarea.mo-det{padding:1px 13px 0;font-size:14px;color:#3a3f45}
+    /* Sin descripción, el renglón queda como siempre: "Mano de obra" y el importe.
+       Un textarea vacío igual imprimiría su placeholder y un hueco. */
+    textarea.mo-det.vacio{display:none}
     td.imp input{padding-right:10px}
     .tot{margin-top:10px;max-width:420px}
     .fila{font-size:25px;padding:11px 0}
     .fila span{font-size:15.5px}
     .letras{font-size:14px}
+    /* 4.4px ≈ 3,3 puntos: chico para copiarlo a ojo, grande para que una impresora
+       láser lo resuelva. Más abajo de eso se empasta y deja de servir de control. */
+    .micro{font-size:4.4px;line-height:1.5;height:14px;color:#4a4f55;
+           -webkit-print-color-adjust:exact;print-color-adjust:exact}
 
     /* si hay segunda hoja, que salga bien */
     thead{display:table-header-group}
@@ -367,7 +401,10 @@
       <tbody id="items"></tbody>
       <tfoot>
         <tr class="r-mo">
-          <td><span>Mano de obra</span></td>
+          <td class="mo-cel">
+            <span>Mano de obra</span>
+            <textarea class="mo-det" id="mo-det" rows="1" placeholder="qué trabajo incluye (opcional)"></textarea>
+          </td>
           <td class="imp"><input id="mo" inputmode="numeric" placeholder="0"></td>
           <td class="x"></td>
         </tr>
@@ -379,6 +416,7 @@
   <div class="tot">
     <div class="fila"><span>Total</span><b id="total">$0</b></div>
     <div class="letras">Son pesos <span id="letras">—</span></div>
+    <div class="micro" id="micro" aria-hidden="true"></div>
   </div>
 </div>
 
@@ -658,7 +696,8 @@ function trabajoAFormulario(t){
     cliente: t.txt_cliente || '', chasis: t.txt_chasis || '',
     telefono: t.txt_telefono || '', vehiculo: t.txt_vehiculo || '', patente: t.txt_patente || '',
     observaciones: t.observaciones || '',
-    monto_mano_obra: t.monto_mano_obra || 0, items, creado_en: t.creado_en
+    monto_mano_obra: t.monto_mano_obra || 0, detalle_mano_obra: t.detalle_mano_obra || '',
+    items, creado_en: t.creado_en
   };
 }
 
@@ -710,7 +749,8 @@ async function guardarEnBase(p){
     txt_cliente: p.cliente, txt_telefono: p.telefono || null,
     txt_vehiculo: p.vehiculo || null, txt_patente: p.patente || null,
     txt_chasis: p.chasis || null, observaciones: p.observaciones || null,
-    monto_mano_obra: p.monto_mano_obra, modificado_en: new Date().toISOString()
+    monto_mano_obra: p.monto_mano_obra, detalle_mano_obra: p.detalle_mano_obra || null,
+    modificado_en: new Date().toISOString()
   };
 
   let id_trabajo = p.id_trabajo || null;
@@ -751,10 +791,20 @@ async function guardarEnBase(p){
 /* ===================== renglones ===================== */
 const renglones = () => [...$('items').children];
 
+/* El alto de un textarea no lo ajusta el navegador solo: hay que medirlo cada vez
+   que cambia el texto —y también cuando cambia el ancho, porque ahí cambia dónde
+   corta cada renglón: al girar el celular, al imprimir, al agrandar la ventana. */
+function ajustarAlto(t){
+  if(!t) return;
+  t.style.height = 'auto';
+  t.style.height = t.scrollHeight + 'px';
+}
+const ajustarTodo = () => [...document.querySelectorAll('textarea.det,textarea.mo-det')].forEach(ajustarAlto);
+
 function agregarRenglon(detalle = '', importe = ''){
   const tr = document.createElement('tr');
   tr.innerHTML =
-    '<td><input class="det" autocomplete="off"></td>' +
+    '<td><textarea class="det" rows="1" autocomplete="off"></textarea></td>' +
     '<td class="imp"><input class="mon" inputmode="numeric" placeholder="0"></td>' +
     '<td class="x"><button class="quitar" aria-label="Quitar">×</button></td>';
 
@@ -763,7 +813,7 @@ function agregarRenglon(detalle = '', importe = ''){
   det.value = detalle;
   mon.value = conMiles(importe);
 
-  det.oninput = () => { sucio = true; marcarVacias(); };
+  det.oninput = () => { sucio = true; ajustarAlto(det); marcarVacias(); };
   mon.oninput = () => { sucio = true; calcular(); };
   mon.onblur  = () => { mon.value = conMiles(aNumero(mon.value)); calcular(); };
   tr.querySelector('.quitar').onclick = () => {
@@ -774,7 +824,16 @@ function agregarRenglon(detalle = '', importe = ''){
   };
 
   $('items').appendChild(tr);
+  /* Recién acá: un elemento que todavía no está en la página mide cero, y el
+     renglón quedaría con el alto de un textarea vacío aunque traiga tres líneas. */
+  ajustarAlto(det);
   return tr;
+}
+
+/* Sin descripción, el renglón de mano de obra se imprime como siempre. */
+function marcarDetalleMO(){
+  $('mo-det').classList.toggle('vacio', !$('mo-det').value.trim());
+  ajustarAlto($('mo-det'));
 }
 
 /* Los renglones vacíos no se imprimen. */
@@ -787,17 +846,32 @@ function marcarVacias(){
 }
 
 /* ===================== cálculo ===================== */
+const totalActual = () =>
+  renglones().reduce((s, tr) => s + aNumero(tr.querySelector('.mon').value), 0) +
+  aNumero($('mo').value);
+
 function calcular(){
-  const repuestos = renglones().reduce((s, tr) => s + aNumero(tr.querySelector('.mon').value), 0);
-  const total = repuestos + aNumero($('mo').value);
+  const total = totalActual();
   $('total').textContent  = enPesos(total);
   $('letras').textContent = total ? capitalizar(enLetras(total)) : '—';
   marcarVacias();
+  pintarMicro();
+}
+
+/* El microtexto ata el número, el importe y la fecha en un mismo renglón: los tres
+   datos que habría que rehacer juntos para alterar la hoja. Se repinta con cada
+   cambio, igual que el total. */
+function pintarMicro(){
+  const nro   = numeroActual != null ? numeroActual : 'S/N';
+  const fecha = $('fecha').value ? $('fecha').value.split('-').reverse().join('/') : '—';
+  const linea = nro + ' ' + enPesos(totalActual()).replace(/\s/g, '') + ' ' + fecha + ' EL SEMAFORO · ';
+  $('micro').textContent = linea.repeat(60);
 }
 
 function pintarFecha(){
   const v = $('fecha').value;
   $('fecha-txt').textContent = v ? v.split('-').reverse().join('/') : '';
+  pintarMicro();
 }
 
 /* ===================== formulario ===================== */
@@ -828,6 +902,7 @@ function leerFormulario(){
   p.patente            = normalizarPatente(p.patente);
   p.subtotal_repuestos = items.reduce((s, i) => s + i.importe, 0);
   p.monto_mano_obra    = aNumero($('mo').value);
+  p.detalle_mano_obra  = $('mo-det').value.trim();
   p.monto_total        = p.subtotal_repuestos + p.monto_mano_obra;
 
   const ahora = new Date().toISOString();
@@ -850,7 +925,8 @@ function camposFaltantes(p){
 function pintarMarca(){
   const nro = numeroActual != null ? ('N° ' + numeroActual) : 'SIN EMITIR';
   const linea = 'TALLER EL SEMÁFORO · ' + nro + ' · CUIT 30-71219060-0 · ';
-  $('marca').firstElementChild.textContent = linea.repeat(28);
+  $('marca').firstElementChild.textContent = linea.repeat(60);
+  pintarMicro();
 }
 
 function mostrar(p){
@@ -864,6 +940,8 @@ function mostrar(p){
   CAMPOS.forEach(c => $(c).value = p[c] || '');
   pintarFecha();
   $('mo').value = conMiles(p.monto_mano_obra);
+  $('mo-det').value = p.detalle_mano_obra || '';
+  marcarDetalleMO();
   $('items').innerHTML = '';
   const items = (p.items && p.items.length) ? p.items : [{}, {}, {}];
   items.forEach(i => agregarRenglon(i.detalle || '', i.importe || ''));
@@ -990,7 +1068,9 @@ function filasDe(p){
   const der = [p.subtotal_conceptos, p.monto_mano_obra, p.monto_total, p.observaciones,
                p.creado_en, p.modificado_en];
   const items = (p.items || []).map(i => [...izq, i.detalle, i.importe, ...der]);
-  if(p.monto_mano_obra) items.push([...izq, 'Mano de obra', p.monto_mano_obra, ...der]);
+  if(p.monto_mano_obra)
+    items.push([...izq, 'Mano de obra' + (p.detalle_mano_obra ? ' — ' + p.detalle_mano_obra : ''),
+                p.monto_mano_obra, ...der]);
   if(!items.length)     items.push([...izq, '', '', ...der]);
   return items;
 }
@@ -1008,7 +1088,8 @@ async function descargarCSV(){
       if(!t) return;
       const items = (t.trabajo_items || []).slice().sort((a, b) => a.orden - b.orden);
       filasDe({ ...historial[i], txt_chasis: t.txt_chasis, txt_telefono: t.txt_telefono,
-                observaciones: t.observaciones, creado_en: t.creado_en,
+                observaciones: t.observaciones, detalle_mano_obra: t.detalle_mano_obra,
+                creado_en: t.creado_en,
                 modificado_en: t.modificado_en, items }).forEach(f => filas.push(filaCSV(f)));
     });
     bajarArchivo('﻿' + filas.join('\n'), 'text/csv;charset=utf-8',
@@ -1220,6 +1301,12 @@ $('modal').onclick    = e => { if(e.target === $('modal')) $('modal').classList.
 $('add').onclick      = () => { sucio = true; agregarRenglon().querySelector('.det').focus(); };
 $('mo').oninput       = () => { sucio = true; calcular(); };
 $('mo').onblur        = () => { $('mo').value = conMiles(aNumero($('mo').value)); calcular(); };
+$('mo-det').oninput   = () => { sucio = true; ajustarAlto($('mo-det')); marcarDetalleMO(); };
+
+/* El alto medido depende del ancho, así que hay que volver a medirlo cuando el
+   ancho cambia: al girar el celular, al redimensionar, y al pasar a la hoja A4. */
+addEventListener('resize', ajustarTodo);
+addEventListener('beforeprint', ajustarTodo);
 $('fecha').onchange   = () => { sucio = true; pintarFecha(); };
 $('chasis').onblur    = e => { e.target.value = e.target.value.trim().toUpperCase(); };
 $('patente').onblur   = async e => {
