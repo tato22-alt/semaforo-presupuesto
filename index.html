@@ -51,24 +51,8 @@
   .hoja{
     max-width:var(--hoja-ancho);margin:0 auto;background:var(--papel);
     border:1px solid #d3d8de;box-shadow:0 2px 14px rgba(20,20,20,.09);
-    padding:18px;position:relative;display:flex;flex-direction:column;
+    padding:18px;display:flex;flex-direction:column;
   }
-
-  /* ---------- marca de agua ----------
-     Disuasivo visual: no impide falsificar —nada impreso lo impide— pero delata
-     la edición casual del PDF y se degrada mal en la fotocopia. Verificar de
-     verdad un papel es buscar su número en el historial y comparar el monto. */
-  .marca{
-    position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;
-    display:flex;align-items:center;justify-content:center;
-  }
-  .marca span{
-    width:190%;transform:rotate(-30deg);text-align:center;word-break:break-all;
-    font-size:11px;font-weight:800;letter-spacing:2.2px;line-height:5;
-    color:rgba(21,24,28,.05);
-  }
-  /* el contenido va por encima de la marca */
-  .cab,.datos,.caja,.tot,.add{position:relative;z-index:1}
 
   /* ---------- cabecera ---------- */
   .cab{display:flex;gap:12px;align-items:flex-start;border-bottom:2px solid var(--tinta);padding-bottom:8px}
@@ -245,6 +229,19 @@
   .carga{padding:36px 16px;text-align:center;color:var(--tenue);font-size:14px}
   [hidden]{display:none!important}
 
+  /* ---------- recuperar borrador ---------- */
+  .br-linea{margin:0 0 6px;font-size:15px;font-weight:700}
+  .br-nota{margin:0 0 16px;font-size:12.5px;color:var(--tenue)}
+  .franja{
+    display:flex;flex-wrap:wrap;gap:9px;align-items:center;
+    max-width:var(--hoja-ancho,740px);margin:0 auto 10px;padding:11px 13px;
+    font-size:13px;line-height:1.5;background:#fdecef;border-left:4px solid var(--rojo);color:#8c0f2c;
+  }
+  .franja span{flex:1;min-width:190px}
+  .franja button{border:1px solid #8c0f2c;background:transparent;color:#8c0f2c;font:inherit;
+                 font-size:12.5px;font-weight:600;padding:7px 11px;cursor:pointer}
+  .franja button:hover{background:#8c0f2c;color:#fff}
+
   /* ---------- avisos ---------- */
   .aviso{
     position:fixed;left:50%;transform:translateX(-50%);bottom:82px;background:var(--tinta);color:#fff;
@@ -287,9 +284,7 @@
     body{background:#fff;padding:0;font-size:15.5px}
     .hoja{max-width:none;border:0;box-shadow:none;padding:0;min-height:246mm}
     .caja{margin-top:11px;flex:1}
-    .acciones,.add,.modal,.aviso,.quitar,th.c-x{display:none!important}
-    .marca span{color:rgba(21,24,28,.055);font-size:15px}
-    .marca{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .acciones,.add,.modal,.aviso,.quitar,th.c-x,.franja{display:none!important}
     td.x{display:none}
     tr.vacia{display:none!important}
     input{background:transparent!important}
@@ -364,10 +359,29 @@
   </div>
 </div>
 
+<div class="modal centrado" id="borrador">
+  <div class="panel" style="max-width:420px">
+    <div class="p-cab"><h2>Quedó un presupuesto sin guardar</h2></div>
+    <div class="p-cuerpo">
+      <p class="br-linea" id="br-quien">—</p>
+      <p class="br-nota" id="br-nota">—</p>
+      <div class="c-botones">
+        <button id="br-descartar">Descartar</button>
+        <button id="br-recuperar" class="principal">Recuperar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="app" hidden>
 
+<div class="franja" id="franja" hidden>
+  <span id="franja-txt"></span>
+  <button id="fb-bajar">Descargar el borrador (.txt)</button>
+  <button id="fb-descartar">Descartar</button>
+</div>
+
 <div class="hoja">
-  <div class="marca" id="marca" aria-hidden="true"><span></span></div>
   <header class="cab">
     <img src="logo.png" alt="Taller El Semáforo">
     <div class="cab-txt">
@@ -461,6 +475,8 @@
 const SUPABASE_URL = 'https://osslhkvdclrbukjqwpnt.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_MV1IZ770uuRM2bUmZqmuWA_mdicKzXw';
 const CLAVE_SESION = 'semaforo-sesion';
+const CLAVE_BORRADOR = 'semaforo-borrador';
+const ESPERA_BORRADOR = 1200;   // ms sin tipear antes de escribir el borrador
 const CAMPOS = ['fecha','cliente','chasis','vehiculo','patente','telefono','observaciones'];
 const MAX_HISTORIAL = 200;
 
@@ -836,13 +852,13 @@ function agregarRenglon(detalle = '', importe = ''){
   det.value = detalle;
   mon.value = conMiles(importe);
 
-  det.oninput = () => { sucio = true; ajustarAlto(det); marcarVacias(); };
-  mon.oninput = () => { sucio = true; calcular(); };
+  det.oninput = () => { marcarSucio(); ajustarAlto(det); marcarVacias(); };
+  mon.oninput = () => { marcarSucio(); calcular(); };
   mon.onblur  = () => { mon.value = conMiles(aNumero(mon.value)); calcular(); };
   tr.querySelector('.quitar').onclick = () => {
     tr.remove();
     if(!$('items').children.length) agregarRenglon();
-    sucio = true;
+    marcarSucio();
     calcular();
   };
 
@@ -946,14 +962,6 @@ function camposFaltantes(p){
   return faltan;
 }
 
-/* La marca de agua lleva el número, así que se repinta cada vez que cambia. */
-function pintarMarca(){
-  const nro = numeroActual != null ? ('N° ' + numeroActual) : 'SIN EMITIR';
-  const linea = 'TALLER EL SEMÁFORO · ' + nro + ' · CUIT 30-71219060-0 · ';
-  $('marca').firstElementChild.textContent = linea.repeat(60);
-  pintarMicro();
-}
-
 function mostrar(p){
   numeroActual   = p.numero;
   idTrabajoActual  = p.id_trabajo || null;
@@ -971,7 +979,7 @@ function mostrar(p){
   const items = (p.items && p.items.length) ? p.items : [{}, {}, {}];
   items.forEach(i => agregarRenglon(i.detalle || '', i.importe || ''));
   calcular();
-  pintarMarca();
+  pintarMicro();
   pintarBotones();
   clienteSugerido = null;
   sucio = false;
@@ -1014,9 +1022,152 @@ async function proponerPorPatente(patente){
     if(!$('vehiculo').value.trim()) $('vehiculo').value = v.descripcion || '';
     if(!$('chasis').value.trim())   $('chasis').value   = v.chasis || '';
     clienteSugerido = { id: c.id_cliente, nombre: c.nombre || '' };
-    sucio = true;
+    marcarSucio();
     avisar('Datos traídos del último presupuesto de este vehículo');
   }catch(e){ /* si falla, simplemente no se propone nada */ }
+}
+
+/* ===================== borrador local =====================
+   La red abajo del trapecio, no un registro. El formulario a medio llenar se
+   guarda sólo en este equipo para que un navegador que descarta la pestaña no se
+   lleve lo cargado. No va a la base: todavía no es un hecho del taller, y cada
+   tecleo contra `trabajos` dejaría filas de basura arriba del historial. */
+
+/* De quién es el borrador. Sale del propio token, así en un equipo compartido el
+   de uno no se le ofrece a otro (RF-707). Se recuerda el último conocido: cuando
+   la sesión vence, sesionActual queda en null justo cuando hay que escribir el
+   borrador, y perder lo cargado porque venció un token es el mismo bug con otro
+   disfraz (RF-706). */
+let usuarioConocido = null;
+
+function cargaDelToken(token){
+  try{
+    let b = String(token).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    while(b.length % 4) b += '=';
+    const bin = atob(b);
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))));
+  }catch(e){ return null; }
+}
+
+function usuarioActual(){
+  const c = sesionActual && cargaDelToken(sesionActual.access_token);
+  if(c && c.sub) usuarioConocido = c.sub;
+  return usuarioConocido;
+}
+
+const Borrador = {
+  leer(){
+    let bruto;
+    try{ bruto = localStorage.getItem(CLAVE_BORRADOR); }
+    catch(e){ return { estado:'inaccesible' }; }
+    if(!bruto) return { estado:'vacio' };
+    let b;
+    try{ b = JSON.parse(bruto); }catch(e){ return { estado:'danado', bruto }; }
+    if(!b || typeof b !== 'object' || !b.datos || typeof b.datos !== 'object' ||
+       !Array.isArray(b.datos.items)) return { estado:'danado', bruto };
+    return { estado:'ok', borrador: b };
+  },
+  /* RF-702: uno solo por usuario y por equipo. El nuevo pisa al anterior; una
+     lista sería un historial, y el historial ya existe y vive en la base. */
+  grabar(datos, usuario){
+    try{
+      localStorage.setItem(CLAVE_BORRADOR,
+        JSON.stringify({ version: 1, usuario, guardado_en: new Date().toISOString(), datos }));
+      return true;
+    }catch(e){ return false; }
+  },
+  borrar(){ try{ localStorage.removeItem(CLAVE_BORRADOR); }catch(e){} }
+};
+
+/* RF-709: que no haya respaldo local nunca bloquea un guardado real. Se avisa una
+   sola vez que esta vez no hay red abajo, y se sigue trabajando igual. */
+let avisadoSinRespaldo = false;
+function avisarSinRespaldo(){
+  if(avisadoSinRespaldo) return;
+  avisadoSinRespaldo = true;
+  avisar('Este navegador no deja guardar el respaldo local. Guardá en la base para no perder nada');
+}
+
+let relojBorrador = null;
+
+/* Escribe ya mismo: se llama al pasar a segundo plano y al cerrar, donde no hay
+   tiempo de esperar nada. leerFormulario() ya devuelve id_trabajo, id_cliente,
+   id_vehiculo y el número, que es lo que evita que recuperar un reedit cree un
+   trabajo nuevo en vez de seguir el que ya existía (RF-703). */
+function guardarBorrador(){
+  clearTimeout(relojBorrador);
+  if(!sucio) return;
+  const usuario = usuarioActual();
+  if(!usuario) return;
+  if(!Borrador.grabar(leerFormulario(), usuario)) avisarSinRespaldo();
+}
+
+/* Y además cada vez que se deja de escribir por un momento, para cubrir al
+   navegador que muere sin avisar (RF-701). */
+function programarBorrador(){
+  clearTimeout(relojBorrador);
+  relojBorrador = setTimeout(guardarBorrador, ESPERA_BORRADOR);
+}
+
+function marcarSucio(){
+  sucio = true;
+  programarBorrador();
+}
+
+const cuandoFue = iso => {
+  const t = new Date(iso);
+  return isNaN(t) ? 'en una fecha desconocida'
+    : t.toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric',
+                                  hour:'2-digit', minute:'2-digit' });
+};
+
+/* RF-704: no se restaura solo. Alguien podría estar reeditando un presupuesto ya
+   emitido sin darse cuenta, así que se dice de cuándo es y de quién era. */
+let borradorOfrecido = null;
+
+function ofrecerBorrador(){
+  const r = Borrador.leer();
+  if(r.estado === 'inaccesible') return avisarSinRespaldo();
+  if(r.estado === 'danado')      return mostrarBorradorIlegible(r.bruto);
+  if(r.estado !== 'ok')          return;
+  if(r.borrador.usuario !== usuarioActual()) return;      // RF-707
+
+  borradorOfrecido = r.borrador;
+  const d = r.borrador.datos;
+  const auto = [d.vehiculo, d.patente].filter(Boolean).join(' · ');
+  $('br-quien').textContent = (d.numero != null ? 'N° ' + d.numero + ' — ' : '') +
+                              (d.cliente || 'sin nombre');
+  $('br-nota').textContent  = (auto ? auto + ' · ' : '') + 'guardado ' + cuandoFue(r.borrador.guardado_en);
+  $('borrador').classList.add('abierto');
+}
+
+function recuperarBorrador(){
+  if(!borradorOfrecido) return;
+  mostrar(borradorOfrecido.datos);
+  sucio = true;                    // recuperado no es guardado: todavía no está en la base
+  cerrarOfrecimiento();
+  ajustarTodo();
+  avisar('Recuperado. Todavía no está guardado en la base');
+}
+
+function cerrarOfrecimiento(){
+  borradorOfrecido = null;
+  $('borrador').classList.remove('abierto');
+}
+
+/* RF-708: un borrador ilegible es una red que falló, no un dato del taller en
+   riesgo. No se bloquea nada: la página abre normal y se deja bajarlo crudo
+   antes de descartarlo. */
+function mostrarBorradorIlegible(bruto){
+  $('franja-txt').textContent =
+    'Quedó un borrador que no se pudo leer. Los presupuestos guardados no corren ' +
+    'riesgo: están en la base. Podés descargarlo antes de descartarlo.';
+  $('franja').hidden = false;
+  $('fb-bajar').onclick = () => {
+    bajarArchivo(bruto, 'text/plain;charset=utf-8', 'semaforo_borrador_ilegible_' + hoyISO() + '.txt');
+    avisar('Borrador descargado');
+  };
+  $('fb-descartar').onclick = () => { Borrador.borrar(); $('franja').hidden = true; };
 }
 
 /* ===================== acciones ===================== */
@@ -1052,9 +1203,10 @@ async function guardarYPdf(){
     numeroActual     = resultado.numero;
     $('nro').textContent = numeroActual;   // tiene que estar en pantalla antes de imprimir
     $('nro-aviso').hidden = true;
-    pintarMarca();
+    pintarMicro();
     pintarBotones();
     sucio = false;
+    Borrador.borrar();                 // RF-705: ya es un hecho del taller
     avisar('Guardado con el N° ' + numeroActual + '. Elegí "Guardar como PDF"');
     if(document.activeElement) document.activeElement.blur();
     setTimeout(() => window.print(), 420);
@@ -1087,6 +1239,7 @@ async function guardarPendiente(){
     idVehiculoActual = resultado.id_vehiculo;
     numeroActual     = resultado.numero;
     sucio = false;
+    Borrador.borrar();                 // RF-705
     pintarBotones();
     avisar(numeroActual != null
       ? 'Cambios guardados en el N° ' + numeroActual
@@ -1357,6 +1510,7 @@ function abrirHistorial(){
 
 /* ===================== login ===================== */
 function mostrarLogin(mensaje){
+  guardarBorrador();        // RF-706: que venza el token no puede costar lo cargado
   $('carga').classList.remove('abierto');
   $('app').hidden = true;
   $('login-error').hidden = !mensaje;
@@ -1405,6 +1559,7 @@ $('buscar').oninput = e => {
 $('b-nuevo').onclick = () => {
   cerrarMenu();
   if(!confirmarDescarte()) return;
+  Borrador.borrar();                   // RF-705
   irANuevo();
   window.scrollTo(0, 0);
   avisar('Presupuesto en blanco. El número se asigna al guardar');
@@ -1417,23 +1572,23 @@ $('b-salir').onclick = () => {
 };
 $('b-cerrar').onclick = () => $('modal').classList.remove('abierto');
 $('modal').onclick    = e => { if(e.target === $('modal')) $('modal').classList.remove('abierto'); };
-$('add').onclick      = () => { sucio = true; agregarRenglon().querySelector('.det').focus(); };
-$('mo').oninput       = () => { sucio = true; calcular(); };
+$('add').onclick      = () => { marcarSucio(); agregarRenglon().querySelector('.det').focus(); };
+$('mo').oninput       = () => { marcarSucio(); calcular(); };
 $('mo').onblur        = () => { $('mo').value = conMiles(aNumero($('mo').value)); calcular(); };
-$('mo-det').oninput   = () => { sucio = true; ajustarAlto($('mo-det')); marcarDetalleMO(); };
+$('mo-det').oninput   = () => { marcarSucio(); ajustarAlto($('mo-det')); marcarDetalleMO(); };
 
 /* El alto medido depende del ancho, así que hay que volver a medirlo cuando el
    ancho cambia: al girar el celular, al redimensionar, y al pasar a la hoja A4. */
 addEventListener('resize', ajustarTodo);
 addEventListener('beforeprint', ajustarTodo);
-$('fecha').onchange   = () => { sucio = true; pintarFecha(); };
+$('fecha').onchange   = () => { marcarSucio(); pintarFecha(); };
 $('chasis').onblur    = e => { e.target.value = e.target.value.trim().toUpperCase(); };
 $('patente').onblur   = async e => {
   e.target.value = normalizarPatente(e.target.value);
   if(e.target.value && !patenteFormatoValido(e.target.value)) avisar('Formato de patente inusual — revisala');
   await proponerPorPatente(e.target.value);
 };
-CAMPOS.filter(c => c !== 'fecha').forEach(c => $(c).oninput = () => { sucio = true; });
+CAMPOS.filter(c => c !== 'fecha').forEach(c => $(c).oninput = () => { marcarSucio(); });
 
 $('login-entrar').onclick = intentarLogin;
 $('login-pass').onkeydown = e => { if(e.key === 'Enter') intentarLogin(); };
@@ -1446,6 +1601,20 @@ window.addEventListener('beforeunload', e => {
   if(sucio){ e.preventDefault(); e.returnValue = ''; }
 });
 
+/* El evento que importa. En el celular, pasar a `hidden` es la única señal
+   confiable de "me pueden matar en cualquier momento": se dispara al cambiar de
+   app, bloquear la pantalla o cambiar de pestaña, antes de que el navegador
+   decida descartar nada. `pagehide` cubre el cierre. `beforeunload` queda, pero
+   nunca fue el mecanismo: no se dispara cuando el sistema mata la pestaña, y por
+   eso el borrador se perdía. */
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'hidden') guardarBorrador();
+});
+window.addEventListener('pagehide', guardarBorrador);
+
+$('br-recuperar').onclick = recuperarBorrador;
+$('br-descartar').onclick = () => { Borrador.borrar(); cerrarOfrecimiento(); };
+
 /* ===================== arranque ===================== */
 async function entrarALaApp(){
   $('carga-txt').textContent = 'Conectando…';
@@ -1457,12 +1626,16 @@ async function entrarALaApp(){
     if(!r.ok) throw new Error('No se pudo conectar con la base');
     /* Si la sesión venció en medio de una carga, al volver a entrar hay que
        encontrar el presupuesto como estaba: en blanco sólo si no había nada. */
-    if(!sucio) irANuevo();
+    const veniaLimpio = !sucio;
+    if(veniaLimpio) irANuevo();
     $('carga').classList.remove('abierto');
     $('app').hidden = false;
     /* Recién ahora los campos tienen medidas de verdad. */
     ajustarTodo();
     window.scrollTo(0, 0);
+    /* Si ya había algo cargado en pantalla no se perdió nada y no hay nada que
+       ofrecer; el borrador se ofrece cuando la página arrancó de cero. */
+    if(veniaLimpio) ofrecerBorrador();
   }catch(e){
     if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
     $('carga-txt').textContent = 'No se pudo conectar con la base. Revisá tu conexión y recargá la página.';
