@@ -593,9 +593,9 @@ async function iniciarSesion(email, password){
 }
 
 /* Un solo refresco a la vez. Supabase rota el refresh token: si dos llamadas
-   refrescan en paralelo —el CSV pide varios presupuestos juntos, o hay dos
-   pestañas abiertas— la segunda usa un token ya gastado, falla, y cierra la
-   sesión sin que haya pasado nada malo. Todas esperan el mismo refresco. */
+   refrescan en paralelo —por ejemplo con dos pestañas abiertas— la segunda
+   usa un token ya gastado, falla, y cierra la sesión sin que haya pasado nada
+   malo. Todas esperan el mismo refresco. */
 let refrescoEnCurso = null;
 
 async function refrescarSesion(){
@@ -1315,26 +1315,72 @@ function filasDe(p){
   return items;
 }
 
+/* El CSV es para contabilidad: lleva TODO el historial, no los 200 de la lista.
+   Una consulta contra la tabla trabajos con los renglones, el cliente y el
+   vehículo embebidos — antes era una por presupuesto. Contra la tabla y no
+   contra vw_presupuestos porque embeber necesita las claves foráneas, y ésas
+   las tiene la tabla. Los campos que la vista deriva se arman igual que ella:
+   cliente_actual es clientes.nombre, patente_norm es vehiculos.patente_norm, y
+   el total es subtotal de renglones + mano de obra.
+
+   Va por tandas porque Supabase corta cada respuesta en max-rows (1000 de
+   fábrica) sin dar error. La primera tanda pide el conteo exacto, y si al final
+   no llegó todo, no se baja nada: un CSV recortado sin aviso es lo que esto
+   vino a arreglar. */
+const TANDA_CSV = 500;
+const SELECT_CSV = 'id_trabajo,numero_presupuesto,fecha_presupuesto,txt_cliente,txt_chasis,' +
+  'txt_telefono,txt_vehiculo,txt_patente,observaciones,monto_mano_obra,detalle_mano_obra,' +
+  'creado_en,modificado_en,trabajo_items(orden,detalle,importe),clientes(nombre),vehiculos(patente_norm)';
+const centavos = n => Math.round(n * 100) / 100;
+
+async function pedirTodoParaCSV(){
+  const vistos = new Map();
+  let total = null, recibidos = 0;
+  while(total == null || recibidos < total){
+    const r = await api('/rest/v1/trabajos?select=' + SELECT_CSV +
+      '&order=numero_presupuesto.desc.nullsfirst,id_trabajo.desc' +
+      '&limit=' + TANDA_CSV + '&offset=' + recibidos,
+      total == null ? { headers: { Prefer: 'count=exact' } } : {});
+    if(!r.ok) throw new Error('No se pudo leer el historial');
+    if(total == null){
+      const m = /\/(\d+)$/.exec(r.headers.get('Content-Range') || '');
+      if(!m) throw new Error('No se pudo confirmar cuántos presupuestos hay. No se descargó nada');
+      total = Number(m[1]);
+    }
+    const tanda = await leerJSON(r);
+    if(!Array.isArray(tanda)) throw new Error('No se pudo leer el historial');
+    if(!tanda.length) break;
+    recibidos += tanda.length;
+    tanda.forEach(t => vistos.set(t.id_trabajo, t));
+  }
+  /* Si alguien guardó o descartó un presupuesto mientras se armaba, las tandas
+     se corren y puede faltar o repetirse uno. Mejor avisar que entregarlo así. */
+  if(vistos.size !== total)
+    throw new Error('El historial cambió mientras se armaba el CSV. Probá de nuevo');
+  return [...vistos.values()];
+}
+
+function trabajoACSV(t){
+  const items = (t.trabajo_items || []).slice().sort((a, b) => a.orden - b.orden);
+  const subtotal = centavos(items.reduce((s, i) => s + Number(i.importe || 0), 0));
+  const mano     = Number(t.monto_mano_obra || 0);
+  return { ...t, items, monto_mano_obra: mano,
+           cliente_actual: t.clientes && t.clientes.nombre,
+           patente_norm:   t.vehiculos && t.vehiculos.patente_norm,
+           subtotal_conceptos: subtotal, monto_total: centavos(subtotal + mano) };
+}
+
 async function descargarCSV(){
   cerrarMenu();
   avisar('Preparando CSV…');
   try{
-    const historial = await pedirHistorial();
-    if(!historial.length) return avisar('Todavía no hay presupuestos guardados');
-    /* El CSV lleva los renglones de cada presupuesto: una segunda consulta por cada uno. */
-    const completos = await Promise.all(historial.map(h => pedirTrabajo(h.id_trabajo)));
+    const trabajos = await pedirTodoParaCSV();
+    if(!trabajos.length) return avisar('Todavía no hay presupuestos guardados');
     const filas = [COLUMNAS.join(';')];
-    completos.forEach((t, i) => {
-      if(!t) return;
-      const items = (t.trabajo_items || []).slice().sort((a, b) => a.orden - b.orden);
-      filasDe({ ...historial[i], txt_chasis: t.txt_chasis, txt_telefono: t.txt_telefono,
-                observaciones: t.observaciones, detalle_mano_obra: t.detalle_mano_obra,
-                creado_en: t.creado_en,
-                modificado_en: t.modificado_en, items }).forEach(f => filas.push(filaCSV(f)));
-    });
+    trabajos.forEach(t => filasDe(trabajoACSV(t)).forEach(f => filas.push(filaCSV(f))));
     bajarArchivo('﻿' + filas.join('\n'), 'text/csv;charset=utf-8',
                  'presupuestos_el_semaforo_' + hoyISO() + '.csv');
-    avisar('CSV descargado');
+    avisar('CSV descargado (' + trabajos.length + ' presupuestos)');
   }catch(e){
     if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
     avisar(e.message || 'No se pudo generar el CSV');
