@@ -72,6 +72,38 @@ número. Uno ya emitido no: eso no cambió, y la que lo impide es la base, no la
 Sobre un presupuesto ya emitido, ese mismo botón pasa a decir **Guardar cambios**: sirve
 para corregir algo sin tener que volver a imprimirlo.
 
+## Si se cierra la pestaña a mitad de un presupuesto
+
+Pasa sobre todo en el celular: dejás un presupuesto a medio cargar para atender a
+alguien, y cuando volvés el navegador cerró la pestaña por su cuenta. **Lo cargado no
+se pierde.** La herramienta lo va guardando sola en ese equipo mientras escribís, sin
+que tengas que apretar nada.
+
+Al volver a abrir la página aparece un cartel, **"Quedó un presupuesto sin guardar"**,
+que dice de quién era y de cuándo es, con dos opciones: **Recuperar** o **Descartar**.
+No se recupera solo, a propósito: así nadie sigue sin darse cuenta un presupuesto que
+otro estaba corrigiendo.
+
+**Lo recuperado todavía no está en la base.** Hay que guardarlo como siempre. Si era un
+presupuesto viejo que estabas corrigiendo, sigue siendo ese mismo, con su número: no se
+crea uno nuevo.
+
+Algunas cosas que conviene saber:
+
+- **Es uno solo, y queda en ese equipo.** Si empezás otro presupuesto, el anterior sin
+  guardar se pierde. No se pasa a otro celular ni a otra computadora: para eso está
+  **Dejar pendiente**.
+- **Se borra solo cuando ya no hace falta**: al guardar (emitido o pendiente) y al
+  apretar **Nuevo presupuesto** y confirmar que descartás lo que había.
+- **Si se vence la sesión, no se pierde.** Volvés a iniciar sesión y te lo ofrece.
+- **Cada usuario ve el suyo.** En un equipo compartido, a nadie se le ofrece lo que
+  cargó otro.
+- **Si quedó dañado**, la página abre igual y arriba aparece una franja que deja
+  descargarlo como texto antes de descartarlo. Los presupuestos guardados no corren
+  ningún riesgo: están en la base.
+- **En una ventana privada**, o si el navegador no deja guardar nada, avisa una vez que
+  no hay respaldo. Guardar en la base funciona igual.
+
 ## Guardar y hacer PDF
 
 Guardar hace varias llamadas a la base (cliente, vehículo, presupuesto y renglones),
