@@ -808,17 +808,29 @@ async function guardarEnBase(p, emitir = true){
     id_trabajo = filas && filas[0] && filas[0].id_trabajo;
   }
 
-  if(p.id_trabajo){
-    const del = await api('/rest/v1/trabajo_items?id_trabajo=eq.' + id_trabajo, { method: 'DELETE' });
-    if(!del.ok) throw new Error(nombre + ' se guardó pero los renglones anteriores no se pudieron reemplazar');
-  }
-  if(p.items.length){
-    const filas = p.items.map((it, i) => ({ id_trabajo, orden: i, detalle: it.detalle, importe: it.importe }));
-    const r = await api('/rest/v1/trabajo_items', { method: 'POST', body: JSON.stringify(filas) });
-    if(!r.ok) throw new Error(nombre + ' se guardó pero los renglones no. Reabrilo del historial y guardá de nuevo');
+  /* De acá en adelante el trabajo YA existe en la base, con su número. Cualquier
+     error que salga de los renglones se lleva los identificadores puestos —también
+     'sin-sesion', que puede saltar si el token vence justo acá—. Sin ellos el que
+     llama sigue creyendo que es un presupuesto nuevo, y un segundo intento gastaría
+     otro número y crearía otra fila numerada, que además no se puede borrar (H18). */
+  const identidad = { id_trabajo, id_cliente, id_vehiculo, numero };
+
+  try{
+    if(p.id_trabajo){
+      const del = await api('/rest/v1/trabajo_items?id_trabajo=eq.' + id_trabajo, { method: 'DELETE' });
+      if(!del.ok) throw new Error(nombre + ' se guardó pero los renglones anteriores no se pudieron reemplazar. Guardá de nuevo');
+    }
+    if(p.items.length){
+      const filas = p.items.map((it, i) => ({ id_trabajo, orden: i, detalle: it.detalle, importe: it.importe }));
+      const r = await api('/rest/v1/trabajo_items', { method: 'POST', body: JSON.stringify(filas) });
+      if(!r.ok) throw new Error(nombre + ' se guardó pero los renglones no. Guardá de nuevo');
+    }
+  }catch(e){
+    e.identidad = identidad;
+    throw e;
   }
 
-  return { id_trabajo, id_cliente, id_vehiculo, numero };
+  return identidad;
 }
 
 /* ===================== renglones ===================== */
@@ -1181,6 +1193,20 @@ function avisar(texto){
 
 const cerrarMenu = () => $('acciones').classList.remove('abierto');
 
+/* Los cuatro identificadores con los que la página sabe que este presupuesto ya existe
+   en la base, y lo que depende de ellos en pantalla. Se aplican juntos: después de un
+   guardado bueno, y también cuando uno falla a mitad de camino (H18). */
+function aplicarIdentidad(r){
+  idTrabajoActual  = r.id_trabajo  || null;
+  idClienteActual  = r.id_cliente  || null;
+  idVehiculoActual = r.id_vehiculo || null;
+  numeroActual     = r.numero != null ? r.numero : null;
+  $('nro').textContent  = numeroActual != null ? numeroActual : '—';
+  $('nro-aviso').hidden = (numeroActual != null);
+  pintarMicro();
+  pintarBotones();
+}
+
 async function guardarYPdf(){
   cerrarMenu();
   const p = leerFormulario();
@@ -1197,20 +1223,16 @@ async function guardarYPdf(){
   boton.textContent = 'Guardando…';
   try{
     const resultado = await guardarEnBase(p);
-    idTrabajoActual  = resultado.id_trabajo;
-    idClienteActual  = resultado.id_cliente;
-    idVehiculoActual = resultado.id_vehiculo;
-    numeroActual     = resultado.numero;
-    $('nro').textContent = numeroActual;   // tiene que estar en pantalla antes de imprimir
-    $('nro-aviso').hidden = true;
-    pintarMicro();
-    pintarBotones();
+    aplicarIdentidad(resultado);   // el N° tiene que estar en pantalla antes de imprimir
     sucio = false;
     Borrador.borrar();                 // RF-705: ya es un hecho del taller
     avisar('Guardado con el N° ' + numeroActual + '. Elegí "Guardar como PDF"');
     if(document.activeElement) document.activeElement.blur();
     setTimeout(() => window.print(), 420);
   }catch(e){
+    /* Si el trabajo llegó a grabarse, la pantalla tiene que enterarse antes que nada:
+       así un segundo intento corrige ESTE presupuesto y no crea otro (H18). */
+    if(e.identidad) aplicarIdentidad(e.identidad);
     if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
     avisar(e.message || 'No se pudo guardar');
   }finally{
@@ -1234,17 +1256,16 @@ async function guardarPendiente(){
   boton.textContent = 'Guardando…';
   try{
     const resultado = await guardarEnBase(p, false);
-    idTrabajoActual  = resultado.id_trabajo;
-    idClienteActual  = resultado.id_cliente;
-    idVehiculoActual = resultado.id_vehiculo;
-    numeroActual     = resultado.numero;
+    aplicarIdentidad(resultado);
     sucio = false;
     Borrador.borrar();                 // RF-705
-    pintarBotones();
     avisar(numeroActual != null
       ? 'Cambios guardados en el N° ' + numeroActual
       : 'Guardado como pendiente. Lo terminás desde "Ver historial"');
   }catch(e){
+    /* Si el trabajo llegó a grabarse, la pantalla tiene que enterarse antes que nada:
+       así un segundo intento corrige ESTE presupuesto y no crea otro (H18). */
+    if(e.identidad) aplicarIdentidad(e.identidad);
     if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
     avisar(e.message || 'No se pudo guardar');
   }finally{

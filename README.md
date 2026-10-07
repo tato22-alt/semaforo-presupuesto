@@ -76,9 +76,11 @@ para corregir algo sin tener que volver a imprimirlo.
 
 Guardar hace varias llamadas a la base (cliente, vehículo, presupuesto y renglones),
 no una sola. Si alguna falla a mitad de camino, la herramienta lo avisa con el número
-de presupuesto de por medio — no queda nada guardado a medias sin que se note. El
-número reservado no se pierde: si el guardado falló, se puede reabrir el mismo
-presupuesto desde el historial y volver a intentar.
+de presupuesto de por medio — no queda nada guardado a medias sin que se note.
+
+**Cuando eso pasa, volvé a apretar Guardar y listo.** El número ya emitido no se
+pierde y no se gasta otro: el segundo intento corrige el mismo presupuesto en vez de
+crear uno nuevo. No hace falta reabrirlo del historial.
 
 ## Lo que protege la hoja impresa
 
