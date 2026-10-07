@@ -144,6 +144,14 @@ Desde **Acciones → Descargar CSV** se arma una planilla con todo el historial 
 sirve para contabilidad o para abrir en Excel. No es un respaldo del que dependa
 recuperar nada: eso ya lo garantiza la base.
 
+Sale **todo**, no sólo los últimos 200 que muestra la lista. Cada presupuesto va con
+sus renglones de repuestos y, al final, el de mano de obra. Al terminar, el aviso dice
+cuántos presupuestos salieron.
+
+**Si no llegó todo, no se descarga nada.** Si se corta la conexión, o alguien guarda o
+descarta un presupuesto justo mientras se arma, avisa y hay que volver a apretar. Una
+planilla incompleta que parece completa es peor que ninguna.
+
 ## Formato de patente
 
 Al salir del campo Patente, si el formato no coincide con ninguna patente argentina

@@ -111,6 +111,30 @@ Se lee de `vw_presupuestos` (últimos 200, o los que coincidan con la búsqueda)
 un presupuesto del historial para reeditarlo se trae también `trabajo_items` con una
 segunda consulta.
 
+## Descarga de CSV
+
+No sale de `vw_presupuestos` como la lista: es **una consulta contra la tabla `trabajos`**
+con `trabajo_items`, `clientes` y `vehiculos` embebidos. Antes eran dos pasos —el
+historial y después un `pedirTrabajo()` por cada fila, hasta 201 pedidos desde un
+celular— y heredaba el tope de 200 de la lista: pasado ese número, el CSV salía
+recortado sin decirlo.
+
+Va contra la tabla porque embeber necesita las claves foráneas, y ésas son de la tabla.
+Lo que la vista deriva se arma igual que ella (migración `20260919120000`):
+`cliente_actual` es `clientes.nombre`, `patente_norm` es `vehiculos.patente_norm`, y el
+total es la suma de los renglones más `monto_mano_obra`. Es un derivado por presupuesto,
+la misma cuenta que la página hace al guardar — no un agregado como el resumen mensual
+que se retiró (ver más abajo).
+
+Se pide **por tandas de 500**, porque Supabase corta cada respuesta en `max-rows` (1000
+de fábrica) sin dar error. La primera tanda pide `Prefer: count=exact`; si al final no
+llegaron tantos presupuestos distintos como dijo la base, no se descarga nada y se
+avisa. Hasta 500 presupuestos es una sola consulta.
+
+Antes de este cambio las columnas `subtotal_repuestos` y `monto_mano_obra` salían
+vacías y faltaba el renglón de mano de obra: la consulta del historial no traía esos
+dos campos. Ahora salen.
+
 ## Ficha interna: lo que no se sabe al emitir
 
 Dos datos del trabajo **no se conocen cuando se emite el presupuesto**, y uno de ellos
