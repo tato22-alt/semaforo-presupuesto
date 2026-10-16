@@ -205,3 +205,7 @@ patente extranjera o un error de tipeo; queda a criterio de quien carga.
 `CONEXION-BASE.md` documenta cómo se conecta esta página con la base (qué llamadas
 hace, qué mecanismos viejos se retiraron y por qué, y las cosas que quedan
 pendientes) para quien retome este código.
+
+`pruebas/` tiene las pruebas automáticas de la página: se corren con
+`node pruebas/correr.js` y no tocan la base real. Antes de subir un cambio tienen
+que pasar todas.

@@ -196,7 +196,7 @@ fusionar fichas mal no tiene vuelta atrás.
 La regla al guardar es conservadora: se reusa esa ficha **sólo si el nombre en pantalla
 sigue siendo el propuesto**. Si cambió —el auto se vendió— se crea una ficha nueva, para
 no pisar el nombre del dueño anterior. Las dos ramas están cubiertas por
-`probar-patente.js`.
+`pruebas/correr.js`.
 
 ## Qué falta (documentado en README y en `mejoras-futuras.md` de la base)
 
