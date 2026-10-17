@@ -479,6 +479,9 @@ const CLAVE_BORRADOR = 'semaforo-borrador';
 const ESPERA_BORRADOR = 1200;   // ms sin tipear antes de escribir el borrador
 const CAMPOS = ['fecha','cliente','chasis','vehiculo','patente','telefono','observaciones'];
 const MAX_HISTORIAL = 200;
+/* Lo que se le dice a quien carga cuando no hay red. Sin esto aparecía el texto
+   crudo del navegador, en inglés: "Failed to fetch" o "Load failed". */
+const SIN_RED = 'Sin conexión. Revisá internet y probá de nuevo';
 
 /* Columnas del CSV de respaldo, en orden. TEXTO marca cuáles se escapan como texto:
    una celda de texto que arranque con = + - @ la toma Excel como fórmula. */
@@ -578,11 +581,14 @@ const Sesion = {
 let sesionActual = Sesion.leer();
 
 async function pedirAuth(ruta, cuerpo){
-  const r = await fetch(SUPABASE_URL + ruta, {
-    method: 'POST',
-    headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify(cuerpo)
-  });
+  let r;
+  try{
+    r = await fetch(SUPABASE_URL + ruta, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo)
+    });
+  }catch(e){ throw new Error(SIN_RED); }
   let datos = null;
   try{ datos = await r.json(); }catch(e){}
   return { ok: r.ok, status: r.status, datos };
@@ -590,7 +596,10 @@ async function pedirAuth(ruta, cuerpo){
 
 async function iniciarSesion(email, password){
   const r = await pedirAuth('/auth/v1/token?grant_type=password', { email, password });
-  if(!r.ok) return { error: (r.datos && (r.datos.error_description || r.datos.msg)) || 'No se pudo iniciar sesión' };
+  /* Supabase contesta en inglés ("Invalid login credentials"): se traduce el caso
+     que de verdad pasa, y el resto queda con un aviso general. */
+  if(!r.ok) return { error: r.datos && ['invalid_credentials', 'invalid_grant'].includes(r.datos.error_code || r.datos.error)
+                       ? 'Email o contraseña incorrectos' : 'No se pudo iniciar sesión' };
   const s = {
     access_token: r.datos.access_token,
     refresh_token: r.datos.refresh_token,
@@ -660,7 +669,7 @@ async function api(ruta, opciones = {}){
       'Content-Type': 'application/json',
       ...(opciones.headers || {})
     }
-  });
+  }).catch(() => { throw new Error(SIN_RED); });
   let r = await enviar();
   /* Un 401 puede ser sólo un token recién vencido: se refresca y se reintenta
      una vez. Recién si vuelve a dar 401 la sesión de verdad no sirve. Antes
@@ -688,13 +697,21 @@ const normalizarNombre = t => String(t || '')
   .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .toUpperCase().replace(/\s+/g, ' ').trim();
 
-/* Un número busca por número; cualquier otra cosa, por cliente o por patente. */
+/* Un número busca por número; cualquier otra cosa, por cliente o por patente.
+   Hasta 9 cifras: un número más largo (un teléfono, por ejemplo) no entra en la
+   columna y la base contestaba con un error, que se veía como falla de conexión.
+
+   Los valores van entre comillas dobles, como pide PostgREST para los caracteres
+   que usa su sintaxis: sin ellas, una coma ("Pérez, Juan") daba error y un
+   paréntesis ("Gómez (hijo)") cortaba la búsqueda y traía cualquier cosa. */
+const entreComillas = v => '"' + v.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+
 function filtroBusqueda(texto){
   const t = texto.trim();
   if(!t) return '';
-  if(/^\d+$/.test(t)) return '&numero_presupuesto=eq.' + t;
-  const nom = encodeURIComponent('*' + normalizarNombre(t) + '*');
-  const pat = encodeURIComponent('*' + normalizarPatente(t) + '*');
+  if(/^\d{1,9}$/.test(t)) return '&numero_presupuesto=eq.' + t;
+  const nom = encodeURIComponent(entreComillas('*' + normalizarNombre(t) + '*'));
+  const pat = encodeURIComponent(entreComillas('*' + normalizarPatente(t) + '*'));
   return '&or=(cliente_norm.ilike.' + nom + ',patente_norm.ilike.' + pat + ')';
 }
 
@@ -765,6 +782,19 @@ async function guardarEnBase(p, emitir = true){
     const encontrados = await leerJSON(buscar) || [];
     if(encontrados.length){
       id_vehiculo = encontrados[0].id_vehiculo;
+      /* El auto ya estaba: queda anotado quién lo trajo esta vez (RF-012). Antes sólo
+         se anotaba al crearlo, y si cambiaba de dueño la página seguía proponiendo al
+         anterior. Corregir un presupuesto viejo, ya emitido, no lo toca: el último
+         cliente es el del presupuesto más nuevo, no el del que se está corrigiendo. */
+      if(p.numero == null){
+        const cambio = { id_cliente_ultimo: id_cliente };
+        if(p.vehiculo) cambio.descripcion = p.vehiculo;
+        if(p.chasis)   cambio.chasis = p.chasis;
+        const r = await api('/rest/v1/vehiculos?id_vehiculo=eq.' + id_vehiculo, {
+          method: 'PATCH', body: JSON.stringify(cambio)
+        });
+        if(!r.ok) throw new Error('No se pudo actualizar el vehículo');
+      }
     }else{
       const r = await api('/rest/v1/vehiculos', {
         method: 'POST', headers: { Prefer: 'return=representation' },
@@ -801,10 +831,19 @@ async function guardarEnBase(p, emitir = true){
 
   if(id_trabajo){
     const cambio = estrenaNumero ? { ...datosTrabajo, numero_presupuesto: numero } : datosTrabajo;
-    const r = await api('/rest/v1/trabajos?id_trabajo=eq.' + id_trabajo, {
-      method: 'PATCH', body: JSON.stringify(cambio)
+    const r = await api('/rest/v1/trabajos?id_trabajo=eq.' + id_trabajo + '&select=id_trabajo', {
+      method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(cambio)
     });
     if(!r.ok) throw new Error(nombre + ' no se pudo actualizar');
+    /* PostgREST contesta que salió bien aunque no haya cambiado ninguna fila. Si no
+       vuelve ninguna, el trabajo ya no existe: alguien descartó este pendiente desde
+       el historial o desde otro equipo. Lo cargado sigue en pantalla, ahora como
+       uno nuevo, para que el próximo Guardar lo cree en vez de chocar otra vez. */
+    if(!(await leerJSON(r) || []).length){
+      const e = new Error('Este pendiente lo habían descartado. Quedó en pantalla como uno nuevo: guardalo de nuevo si lo querés');
+      e.identidad = { id_trabajo: null, id_cliente, id_vehiculo, numero: null };
+      throw e;
+    }
   }else{
     const nuevo = { ...datosTrabajo, origen_carga: 'presupuesto_web' };
     if(numero != null) nuevo.numero_presupuesto = numero;
@@ -1021,9 +1060,12 @@ function confirmarDescarte(){
    RF-012: el vehículo guarda su último cliente conocido, sólo para proponerlo.
    Sin esto, cada presupuesto crea un cliente nuevo y en seis meses hay cuatro
    "Juan Pérez" que no son la misma ficha — y fusionar mal no tiene vuelta atrás. */
-let clienteSugerido = null;   // { id, nombre } del que se propuso
+let clienteSugerido = null;   // { id, nombre, patente } del que se propuso
 
 async function proponerPorPatente(patente){
+  /* Volver a pasar por el campo sin cambiar la patente no borra lo que ya se
+     aceptó. Antes se perdía, y al guardar se creaba otra ficha del mismo cliente. */
+  if(clienteSugerido && clienteSugerido.patente === patente) return;
   clienteSugerido = null;
   if(!patente || idTrabajoActual) return;        // reeditando no se propone nada
   if($('cliente').value.trim()) return;          // ya hay un cliente cargado: no molestar
@@ -1042,7 +1084,7 @@ async function proponerPorPatente(patente){
     $('telefono').value = c.telefono || '';
     if(!$('vehiculo').value.trim()) $('vehiculo').value = v.descripcion || '';
     if(!$('chasis').value.trim())   $('chasis').value   = v.chasis || '';
-    clienteSugerido = { id: c.id_cliente, nombre: c.nombre || '' };
+    clienteSugerido = { id: c.id_cliente, nombre: c.nombre || '', patente };
     marcarSucio();
     avisar('Datos traídos del último presupuesto de este vehículo');
   }catch(e){ /* si falla, simplemente no se propone nada */ }
@@ -1120,7 +1162,11 @@ function guardarBorrador(){
   if(!sucio) return;
   const usuario = usuarioActual();
   if(!usuario) return;
-  if(!Borrador.grabar(leerFormulario(), usuario)) avisarSinRespaldo();
+  /* La ficha propuesta por la patente va aparte y no como id_cliente: si se
+     recuperara ya resuelta, cambiar el nombre después —el auto se vendió— pisaría
+     la ficha del dueño anterior. */
+  const datos = { ...leerFormulario(), id_cliente: idClienteActual, sugerido: clienteSugerido };
+  if(!Borrador.grabar(datos, usuario)) avisarSinRespaldo();
 }
 
 /* Y además cada vez que se deja de escribir por un momento, para cubrir al
@@ -1165,6 +1211,7 @@ function ofrecerBorrador(){
 function recuperarBorrador(){
   if(!borradorOfrecido) return;
   mostrar(borradorOfrecido.datos);
+  clienteSugerido = borradorOfrecido.datos.sugerido || null;
   sucio = true;                    // recuperado no es guardado: todavía no está en la base
   cerrarOfrecimiento();
   ajustarTodo();
@@ -1223,8 +1270,8 @@ async function guardarYPdf(){
 
   const faltan = camposFaltantes(p);
   if(faltan.length) return avisar('Falta cargar: ' + faltan.join(', '));
-  /* La base rechaza importes negativos, y para cuando los rechaza el número ya
-     está gastado. Se atajan acá. */
+  /* Un importe negativo no tiene sentido en un presupuesto, y la base no lo frena
+     (no hay control sobre el importe de los renglones): se ataja acá. */
   if(p.items.some(i => i.importe < 0)) return avisar('Hay un renglón con importe negativo');
 
   const boton = $('b-pdf');
@@ -1442,6 +1489,13 @@ async function descartarPendiente(fila, h, donde){
     const panel = fila.nextElementSibling;
     if(panel && panel.classList.contains('ficha')) panel.remove();
     fila.remove();
+    /* Si era el que estaba abierto, la hoja no puede seguir apuntando a un trabajo
+       que ya no existe: guardarlo después gastaba un número sin guardar nada. */
+    if(h.id_trabajo === idTrabajoActual){
+      Borrador.borrar();
+      irANuevo();
+      return avisar('Pendiente descartado. Era el que estaba en pantalla: la hoja quedó en blanco');
+    }
     avisar('Pendiente descartado');
   }catch(e){
     if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
@@ -1605,12 +1659,19 @@ async function intentarLogin(){
     return;
   }
   const boton = $('login-entrar');
+  if(boton.disabled) return;          // Enter mientras ya está entrando: no entrar dos veces
   boton.disabled = true;
   boton.textContent = 'Ingresando…';
   $('login-error').hidden = true;
-  const r = await iniciarSesion(email, pass);
-  boton.disabled = false;
-  boton.textContent = 'Ingresar';
+  /* Sin señal, iniciarSesion lanza en vez de devolver: sin esto el botón quedaba
+     trabado en "Ingresando…" hasta recargar la página. */
+  let r;
+  try{ r = await iniciarSesion(email, pass); }
+  catch(e){ r = { error: e.message }; }
+  finally{
+    boton.disabled = false;
+    boton.textContent = 'Ingresar';
+  }
   if(r.error){
     $('login-error').textContent = r.error;
     $('login-error').hidden = false;
@@ -1640,9 +1701,17 @@ $('b-nuevo').onclick = () => {
   window.scrollTo(0, 0);
   avisar('Presupuesto en blanco. El número se asigna al guardar');
 };
+/* El que entra después no tiene que ver lo que cargó otra persona (RF-707). Antes
+   la hoja quedaba como estaba y el siguiente usuario la encontraba cargada. */
 $('b-salir').onclick = () => {
   cerrarMenu();
-  if(!confirm('¿Cerrar sesión?')) return;
+  if(!confirm(sucio
+      ? 'Hay un presupuesto sin guardar en pantalla. Si cerrás sesión, se descarta.\n\n' +
+        'Para conservarlo, cancelá y dejalo pendiente.\n\n¿Cerrar sesión igual?'
+      : '¿Cerrar sesión?')) return;
+  if(sucio) Borrador.borrar();
+  irANuevo();
+  usuarioConocido = null;
   cerrarSesion();
   mostrarLogin();
 };
@@ -1697,11 +1766,18 @@ async function entrarALaApp(){
   $('carga').classList.add('abierto');
   $('app').hidden = true;
   try{
+    const anterior = usuarioConocido;
     /* Confirma que la sesión sirve de verdad, sin gastar ningún número. */
     const r = await api('/rest/v1/vw_presupuestos?select=id_trabajo&limit=1');
     if(!r.ok) throw new Error('No se pudo conectar con la base');
+    /* Se anota ya quién entró. Si no, cuando la sesión vencía antes de la primera
+       pausa al tipear, el borrador no tenía dueño y no se guardaba (RF-706). */
+    const usuario = usuarioActual();
     /* Si la sesión venció en medio de una carga, al volver a entrar hay que
-       encontrar el presupuesto como estaba: en blanco sólo si no había nada. */
+       encontrar el presupuesto como estaba: en blanco sólo si no había nada. Si
+       entró otra persona, lo de la pantalla es del anterior: queda en su
+       borrador y a ésta se le muestra la hoja en blanco (RF-707). */
+    if(sucio && anterior && anterior !== usuario) sucio = false;
     const veniaLimpio = !sucio;
     if(veniaLimpio) irANuevo();
     $('carga').classList.remove('abierto');

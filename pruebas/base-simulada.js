@@ -56,6 +56,7 @@ function crearBase(opciones = {}){
     fallas: [],                                 // respuestas de error preparadas por la prueba
     tablas: t,
     alResponder: null,                          // gancho para cambiar datos en medio de una consulta
+    sinRed: false,                              // true: correr.js corta la conexión, como sin señal
   };
 
   /* ---------- filas ---------- */
@@ -156,17 +157,29 @@ function crearBase(opciones = {}){
   }
 
   /* ---------- lo que entiende de la sintaxis de PostgREST ---------- */
-  function partirArriba(texto){                       // separa por comas que no estén entre paréntesis
-    const partes = []; let nivel = 0, actual = '';
-    for(const ch of texto){
-      if(ch === '(') nivel++;
-      if(ch === ')') nivel--;
-      if(ch === ',' && nivel === 0){ partes.push(actual); actual = ''; }
+  /* Separa por comas que no estén entre paréntesis ni entre comillas dobles. */
+  function partirArriba(texto){
+    const partes = []; let nivel = 0, comillas = false, actual = '';
+    for(let i = 0; i < texto.length; i++){
+      const ch = texto[i];
+      if(comillas && ch === '\\'){ actual += ch + (texto[i + 1] || ''); i++; continue; }
+      if(ch === '"') comillas = !comillas;
+      if(!comillas && ch === '(') nivel++;
+      if(!comillas && ch === ')') nivel--;
+      if(ch === ',' && nivel === 0 && !comillas){ partes.push(actual); actual = ''; }
       else actual += ch;
     }
     if(actual) partes.push(actual);
     return partes;
   }
+
+  /* Un valor entre comillas dobles es literal: adentro \" es una comilla y \\ una barra. */
+  const sacarComillas = v => /^".*"$/s.test(v) ? v.slice(1, -1).replace(/\\(.)/g, '$1') : v;
+
+  /* Las columnas enteras: PostgREST le pasa el valor a Postgres, que lo convierte a
+     número. "016000" encuentra el 16000, y uno que no entra en un integer da error. */
+  const ENTERAS = ['id_cliente', 'id_vehiculo', 'id_trabajo', 'id_item', 'id_cliente_ultimo',
+                   'numero_presupuesto', 'orden', 'cantidad_conceptos'];
 
   function proyectar(tabla, fila, select){
     const salida = {};
@@ -192,7 +205,12 @@ function crearBase(opciones = {}){
     if(!COLUMNAS[tabla].includes(col)) throw new ErrorBase(400, '42703', `column ${tabla}.${col} does not exist`);
     const m = /^(eq|ilike|is|in)\.(.*)$/s.exec(expr);
     if(!m) throw new ErrorBase(400, 'PGRST100', `failed to parse filter (${expr})`);
-    const [, op, valor] = m;
+    const op = m[1], valor = sacarComillas(m[2]);
+    if(op === 'eq' && ENTERAS.includes(col)){
+      if(!/^\s*[+-]?\d+\s*$/.test(valor)) throw new ErrorBase(400, '22P02', `invalid input syntax for type integer: "${valor}"`);
+      if(Math.abs(Number(valor)) > 2147483647) throw new ErrorBase(400, '22003', `value "${valor}" is out of range for type integer`);
+      return f => f[col] === Number(valor);
+    }
     if(op === 'eq')    return f => f[col] != null && String(f[col]) === valor;
     if(op === 'is')    return f => valor === 'null' ? f[col] == null : String(f[col]) === valor;
     if(op === 'in')    { const vs = valor.replace(/^\(|\)$/g, '').split(','); return f => vs.includes(String(f[col])); }
@@ -308,7 +326,7 @@ function crearBase(opciones = {}){
       if(metodo === 'POST'){
         const datos = JSON.parse(cuerpo);
         const nuevas = (Array.isArray(datos) ? datos : [datos]).map(d => insertar(tabla, d));
-        return { status: 201, cuerpo: devolver ? nuevas.map(f => proyectar(tabla, conGeneradas(tabla, f), '*')) : null };
+        return { status: 201, cuerpo: devolver ? nuevas.map(f => proyectar(tabla, conGeneradas(tabla, f), p.get('select'))) : null };
       }
 
       const elegidas = filtrar(tabla, p).map(f => t[tabla].find(x => x[CLAVE[tabla]] === f[CLAVE[tabla]]));
@@ -320,7 +338,7 @@ function crearBase(opciones = {}){
           Object.assign(f, normalizarValores(tabla, { ...cambio }));
           try{ controlar(tabla, f); }catch(e){ Object.assign(f, antes); throw e; }
         }
-        return { status: devolver ? 200 : 204, cuerpo: devolver ? elegidas.map(f => proyectar(tabla, conGeneradas(tabla, f), '*')) : null };
+        return { status: devolver ? 200 : 204, cuerpo: devolver ? elegidas.map(f => proyectar(tabla, conGeneradas(tabla, f), p.get('select'))) : null };
       }
       if(metodo === 'DELETE'){
         /* La base real sí deja borrar clientes y vehículos; la página nunca lo hace,
@@ -335,7 +353,7 @@ function crearBase(opciones = {}){
           const ids = borrables.map(f => f.id_trabajo);
           t.trabajo_items = t.trabajo_items.filter(i => !ids.includes(i.id_trabajo));
         }
-        return { status: devolver ? 200 : 204, cuerpo: devolver ? borrables.map(f => proyectar(tabla, conGeneradas(tabla, f), '*')) : null };
+        return { status: devolver ? 200 : 204, cuerpo: devolver ? borrables.map(f => proyectar(tabla, conGeneradas(tabla, f), p.get('select'))) : null };
       }
       return { status: 405, cuerpo: { message: 'método no soportado' } };
     }catch(e){
