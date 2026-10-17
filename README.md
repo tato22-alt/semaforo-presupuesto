@@ -58,9 +58,9 @@ poner la mano de obra, **no hace falta terminarlo ahí**. Con **Acciones → Dej
 pendiente** se guarda como está. Lo único que pide es **el nombre del cliente**, para
 poder encontrarlo después.
 
-Un pendiente **no gasta número**: aparece como `N° —` y la hoja, si la imprimís, sale
-marcada **SIN EMITIR**. Si al final no va a ningún lado, lo descartás y no queda ningún
-hueco en la numeración.
+Un pendiente **no gasta número**: aparece como `N° —`, y si lo imprimís sale así, sin
+número. Si al final no va a ningún lado, lo descartás y no queda ningún hueco en la
+numeración.
 
 Lo terminás abriéndolo desde **Ver historial** —los pendientes salen arriba de todo,
 marcados— completando lo que faltaba y guardando como siempre. Ahí recibe su número. Es
@@ -68,6 +68,11 @@ el mismo presupuesto, no uno nuevo.
 
 **Un pendiente sí se puede descartar** (Ficha → Descartar), justamente porque nunca tuvo
 número. Uno ya emitido no: eso no cambió, y la que lo impide es la base, no la página.
+Si descartás el que tenés abierto en pantalla, la hoja queda en blanco.
+
+Si otra persona lo descartó desde otro equipo mientras vos lo tenías abierto, al
+guardar te avisa, y lo que cargaste queda en pantalla como un presupuesto nuevo:
+volvés a guardar y listo.
 
 Sobre un presupuesto ya emitido, ese mismo botón pasa a decir **Guardar cambios**: sirve
 para corregir algo sin tener que volver a imprimirlo.
@@ -95,9 +100,12 @@ Algunas cosas que conviene saber:
   **Dejar pendiente**.
 - **Se borra solo cuando ya no hace falta**: al guardar (emitido o pendiente) y al
   apretar **Nuevo presupuesto** y confirmar que descartás lo que había.
-- **Si se vence la sesión, no se pierde.** Volvés a iniciar sesión y te lo ofrece.
+- **Si se vence la sesión, no se pierde.** Volvés a iniciar sesión y lo encontrás como
+  estaba. Si en cambio entra otra persona, encuentra la hoja en blanco.
 - **Cada usuario ve el suyo.** En un equipo compartido, a nadie se le ofrece lo que
   cargó otro.
+- **Si cerrás sesión con algo sin guardar**, te avisa antes: si seguís, se descarta.
+  Para conservarlo, dejalo pendiente primero.
 - **Si quedó dañado**, la página abre igual y arriba aparece una franja que deja
   descargarlo como texto antes de descartarlo. Los presupuestos guardados no corren
   ningún riesgo: están en la base.
@@ -116,7 +124,7 @@ crear uno nuevo. No hace falta reabrirlo del historial.
 
 ## Lo que protege la hoja impresa
 
-Tres cosas, y ninguna impide falsificar un papel —nada impreso lo impide—: lo que
+Dos cosas, y ninguna impide falsificar un papel —nada impreso lo impide—: lo que
 hacen es que la adulteración se note.
 
 - **El total en letras**, debajo de la cifra. Es la defensa vieja y la mejor: cambiar
@@ -125,8 +133,10 @@ hacen es que la adulteración se note.
 - **El microtexto pegado al total**: una tira diminuta que repite número, importe y
   fecha. Para alterar la cifra hay que rehacer también esa tira, y a ese cuerpo de
   letra no se empareja a ojo. Fotocopiado se empasta, que ya es una señal.
-- **La marca de agua** en diagonal sobre toda la hoja, con el nombre, el CUIT y el
-  número. Si el presupuesto todavía no se guardó, dice **SIN EMITIR**.
+
+Hubo también una marca de agua en diagonal, y se sacó: cruzaba la zona de los
+repuestos y quedaba demasiado oscura. Un pendiente impreso sale sin número (`N° —`):
+no es un presupuesto emitido.
 
 Verificar de verdad un papel sigue siendo lo mismo: buscar ese número en el historial
 y comparar el monto.
@@ -157,7 +167,8 @@ aseguradoras — dos cosas que no se pueden reconstruir para atrás.
 
 Arriba de la lista hay un buscador. Escribí el **nombre del cliente** (sin importar
 acentos ni mayúsculas: *peña* encuentra a *Peña* y a *Pena*), una **patente** (da igual
-cómo la escribas) o directamente el **número de presupuesto**.
+cómo la escribas) o directamente el **número de presupuesto**. Se puede buscar con
+comas o paréntesis, tal como está escrito el nombre ("Pérez, Juan", "Gómez (hijo)").
 
 ## Cuando un auto vuelve
 
@@ -169,6 +180,10 @@ Además evita algo que se paga caro con el tiempo: **que el mismo cliente termin
 cuatro fichas distintas.** Si aceptás la propuesta y dejás el nombre como está, se
 actualiza esa ficha. Si el auto cambió de dueño y escribís otro nombre, se crea una
 ficha nueva y la del dueño anterior queda intacta.
+
+Al guardar, el auto queda anotado con el cliente de ese presupuesto: la próxima vez
+que vuelva, se propone el dueño actual y no uno anterior. Corregir un presupuesto
+viejo no cambia eso.
 
 ## Descargar CSV
 
@@ -192,8 +207,10 @@ patente extranjera o un error de tipeo; queda a criterio de quien carga.
 
 ## Si algo no anda
 
-- **"No se pudo iniciar sesión"** — revisá el email y la contraseña. Si seguís sin
-  poder entrar, consultá con quien administra los usuarios en Supabase.
+- **"Email o contraseña incorrectos"** — revisá los dos. Si seguís sin poder entrar,
+  consultá con quien administra los usuarios en Supabase.
+- **"Sin conexión. Revisá internet y probá de nuevo"** — el equipo no llegó a la base.
+  No se guardó nada ni se gastó ningún número: cuando vuelva la señal, apretá de nuevo.
 - **Un aviso dice que algo "no se pudo guardar" o "no se pudo pedir"** — casi
   siempre es la conexión. Revisá el internet del equipo y volvé a intentar; nada se
   guarda a medias sin avisar.
