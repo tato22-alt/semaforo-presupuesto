@@ -2,7 +2,7 @@
 
 Este documento registra las decisiones de la migración de `localStorage` a Supabase,
 para quien retome este código después. La base es la del repo
-`tato22-alt/gestion-taller-sql-server`, feature 001 (presupuesto) + 002 (numeración).
+`tato22-alt/semaforo-modelo-datos`, feature 001 (presupuesto) + 002 (numeración).
 
 **Proyecto Supabase:** `osslhkvdclrbukjqwpnt` · **URL:** `https://osslhkvdclrbukjqwpnt.supabase.co`
 
@@ -25,10 +25,11 @@ de un navegador**. La base los reemplaza:
 **Se mantiene** la descarga de CSV como respaldo/planilla contable, ahora a partir de
 lo que devuelve la base en vez de `localStorage`.
 
-**Se retiró** "Borrar del historial": la base revoca el DELETE sobre `trabajos` para el
-rol autenticado (hallazgo H5 / RF-023) — un presupuesto es un registro histórico, no se
-borra nunca. No hay reemplazo por ahora; marcar un presupuesto como "no concretado"
-(la columna ya existe) queda para una próxima vuelta.
+**Se retiró** "Borrar del historial" para los emitidos: un presupuesto con número es un
+registro histórico y no se borra nunca (hallazgo H5 / RF-023). Lo que se puede descartar
+es un **pendiente**, que nunca tuvo número (feature 006): la base lo permite con una
+política restrictiva que sólo deja borrar filas sin número. Marcar un emitido como "no
+concretado" se hace desde la ficha del historial (ver más abajo).
 
 ## Login
 
@@ -36,6 +37,15 @@ Sin sesión no se lee ni se escribe nada (RLS, T007/T008). Pantalla de email +
 contraseña contra `/auth/v1/token?grant_type=password`. La sesión (access + refresh
 token) se guarda en `localStorage` y se renueva sola cuando falta menos de un minuto
 para que venza. Si el refresco falla, vuelve a pedir login.
+
+Sin red, ni el login ni ninguna llamada muestran el texto crudo del navegador ("Failed
+to fetch", en inglés): avisan "Sin conexión. Revisá internet y probá de nuevo", y el
+botón de entrar no queda trabado. La contraseña equivocada dice "Email o contraseña
+incorrectos" en vez del "Invalid login credentials" que contesta Supabase.
+
+Al cerrar sesión con algo sin guardar, se avisa y la hoja queda en blanco: el que entra
+después no ve lo de otro (RF-707). Lo mismo si la sesión vence y entra otra persona; si
+vuelve a entrar la misma, encuentra todo como estaba.
 
 Usuarios ya dados de alta y confirmados por el dueño del negocio — esta página no
 tiene alta de usuarios, eso se hace desde el panel de Supabase.
@@ -61,10 +71,14 @@ es justo lo que RF-020 pide.
 Guardar un presupuesto nuevo hace, en orden:
 
 1. `POST /rest/v1/clientes` (o `PATCH` si ya existe `id_cliente`, al reeditar).
-2. Buscar `vehiculos` por `patente_norm`; si no existe, `POST`. Si la patente está
-   vacía, se guarda sin vehículo.
+2. Buscar `vehiculos` por `patente_norm`; si no existe, `POST`. Si existe, `PATCH` con
+   el cliente de este presupuesto como `id_cliente_ultimo` (y la descripción y el chasis,
+   si se cargaron), salvo al corregir uno ya emitido. Si la patente está vacía, se guarda
+   sin vehículo.
 3. Pedir el número (sólo si es nuevo) y `POST /rest/v1/trabajos` con él — o `PATCH`
-   si es una reedición, que conserva el número que ya tenía.
+   si es una reedición, que conserva el número que ya tenía. El `PATCH` pide la fila de
+   vuelta: PostgREST contesta bien aunque no cambie nada, y si no vuelve ninguna es que
+   el pendiente lo descartaron desde otro lado. Se avisa y lo cargado queda como nuevo.
 4. Reemplazar `trabajo_items`: `DELETE` de los existentes (si había) + `POST` de los
    actuales.
 
@@ -181,9 +195,12 @@ duplicada en dos aplicaciones termina comportándose distinto en cada una.
 
 ## Búsqueda y reconocimiento del vehículo
 
-**Buscador.** Un número busca por `numero_presupuesto`; cualquier otro texto va contra
+**Buscador.** Un número de hasta 9 cifras busca por `numero_presupuesto` (uno más largo
+no entra en un integer y la base daría error); cualquier otro texto va contra
 `cliente_norm` y `patente_norm` con `ilike`, normalizando en el navegador igual que lo
-hace la base (sin acentos, mayúsculas, espacios colapsados). Pega contra el índice de
+hace la base (sin acentos, mayúsculas, espacios colapsados). Los valores van entre
+comillas dobles dentro del `or=(...)`: sin ellas, una coma daba error y un paréntesis
+cortaba el filtro en silencio. Comprobado contra PostgREST 12.2.3. Pega contra el índice de
 trigramas que existe desde el feature 001. Espera 300 ms entre teclas para no disparar
 una consulta por letra, y descarta respuestas que llegan fuera de orden.
 
@@ -195,11 +212,12 @@ fusionar fichas mal no tiene vuelta atrás.
 
 La regla al guardar es conservadora: se reusa esa ficha **sólo si el nombre en pantalla
 sigue siendo el propuesto**. Si cambió —el auto se vendió— se crea una ficha nueva, para
-no pisar el nombre del dueño anterior. Las dos ramas están cubiertas por
+no pisar el nombre del dueño anterior. Si se vuelve a pasar por el campo patente sin
+cambiarla, la propuesta aceptada se conserva; y el borrador la guarda aparte, así al
+recuperarlo sigue valiendo la misma regla. Todo eso está cubierto por
 `pruebas/correr.js`.
 
 ## Qué falta (documentado en README y en `mejoras-futuras.md` de la base)
 
-- Marcar un presupuesto como "no concretado" desde la interfaz.
 - Concurrencia: si dos personas reeditan el mismo presupuesto a la vez, gana el último
   que guarda — no hay bloqueo optimista. Sin uso real todavía para que esto importe.
