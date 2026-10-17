@@ -32,7 +32,8 @@ async function abrirPagina(browser, base, { sesion = true } = {}){
   page.on('pageerror', e => page.errores.push(e.message));
   /* confirm() y el aviso de salir: se acepta salvo que la prueba diga otra cosa. */
   page.aceptarDialogos = true;
-  page.on('dialog', d => page.aceptarDialogos ? d.accept() : d.dismiss());
+  page.dialogos = [];
+  page.on('dialog', d => { page.dialogos.push(d.message()); return page.aceptarDialogos ? d.accept() : d.dismiss(); });
 
   await ctx.route('**/*', async route => {
     const req = route.request();
@@ -44,6 +45,7 @@ async function abrirPagina(browser, base, { sesion = true } = {}){
                              body: fs.readFileSync(archivo) });
     }
     if(!u.host.endsWith('.supabase.co')) return route.abort();
+    if(base.sinRed) return route.abort('internetdisconnected');
     if(req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     const r = base.responder(req.method(), req.url(), req.headers(), req.postData());
     return route.fulfill({
@@ -174,7 +176,7 @@ prueba('Entrar con email y contraseña', async ({ abrir }) => {
   const page = await abrir({ sesion: false });
   await entrar(page, 'otra');
   await page.waitForSelector('#login-error:not([hidden])');
-  igual(await page.textContent('#login-error'), 'Invalid login credentials', 'mensaje con la contraseña mal');
+  igual(await page.textContent('#login-error'), 'Email o contraseña incorrectos', 'mensaje con la contraseña mal');
   await page.fill('#login-pass', 'clave');
   await page.click('#login-entrar');
   await esperarApp(page);
@@ -284,6 +286,27 @@ prueba('Si el auto cambió de dueño, se crea otra ficha y la anterior queda igu
   await menu(page, 'b-pdf');
   await aviso(page, /Guardado con el N° 16000/);
   igual(base.tablas.clientes.map(c => [c.nombre, c.telefono]), [['Juan Pérez', '2255 999'], ['Marta Sosa', '2255 000']], 'fichas');
+  igual(base.tablas.vehiculos[0].id_cliente_ultimo, 2, 'el auto quedó con el dueño nuevo');
+
+  /* La próxima vez que viene, se propone a Marta y no a Juan. */
+  await menu(page, 'b-nuevo');
+  await page.fill('#patente', 'AB123CD');
+  await page.locator('#patente').blur();
+  await page.waitForFunction(() => document.getElementById('cliente').value === 'Marta Sosa');
+});
+
+prueba('Corregir un presupuesto viejo no cambia el dueño anotado en el auto', async ({ abrir, base }) => {
+  base.agregar('clientes', { nombre: 'Juan Pérez' });
+  base.agregar('clientes', { nombre: 'Marta Sosa' });
+  base.agregar('vehiculos', { patente: 'AB123CD', id_cliente_ultimo: 2 });
+  guardado(base, { numero_presupuesto: 16000, id_cliente: 1, id_vehiculo: 1, txt_cliente: 'Juan Pérez', txt_patente: 'AB123CD' });
+  base.numero = 16001;
+  const page = await abrir();
+  await abrirDelHistorial(page, 'N° 16000');
+  await cargar(page, { mano: 6000 });
+  await menu(page, 'b-pend');
+  await aviso(page, /Cambios guardados en el N° 16000/);
+  igual(base.tablas.vehiculos[0].id_cliente_ultimo, 2, 'dueño anotado en el auto');
 });
 
 prueba('Buscar en el historial por nombre sin acentos, patente o número', async ({ abrir, base }) => {
@@ -412,6 +435,8 @@ prueba('Con la sesión vencida pide entrar de nuevo, sin perder lo cargado', asy
   await menu(page, 'b-hist');
   await page.waitForSelector('#login.abierto');
   ok(/La sesión venció/.test(await page.textContent('#login-error')), 'no dice que la sesión venció');
+  ok(/Hugo Paz/.test(await page.evaluate(() => localStorage.getItem('semaforo-borrador')) || ''),
+     'con el login a la vista no quedó guardado el borrador (RF-706)');
   await entrar(page, 'clave');
   await esperarApp(page);
   igual(await page.inputValue('#cliente'), 'Hugo Paz', 'lo cargado después de volver a entrar');
@@ -438,6 +463,168 @@ prueba('El borrador de un usuario no se le ofrece a otro', async ({ abrir, base 
   await esperarApp(page);
   await page.waitForTimeout(300);
   igual(await page.locator('#borrador.abierto').count(), 0, 'le ofreció el borrador de otro usuario');
+});
+
+prueba('Volver a pasar por la patente no pierde el cliente propuesto', async ({ abrir, base }) => {
+  base.agregar('clientes', { nombre: 'Juan Pérez', telefono: '2255 999' });
+  base.agregar('vehiculos', { patente: 'AB123CD', descripcion: 'Fiat Palio', id_cliente_ultimo: 1 });
+  const page = await abrir();
+  await page.fill('#patente', 'AB123CD');
+  await page.locator('#patente').blur();
+  await page.waitForFunction(() => document.getElementById('cliente').value === 'Juan Pérez');
+  await page.click('#patente');                    // se vuelve a revisar la patente, sin cambiarla
+  await page.locator('#patente').blur();
+  await cargar(page, { fecha: '2026-10-16', mano: 1000 });
+  await menu(page, 'b-pdf');
+  await aviso(page, /Guardado con el N° 16000/);
+  igual(base.tablas.clientes.length, 1, 'fichas de cliente');
+  igual(base.tablas.trabajos[0].id_cliente, 1, 'cliente del trabajo');
+});
+
+prueba('Recuperar un borrador con el cliente propuesto y cambiar el nombre no pisa la ficha', async ({ abrir, base }) => {
+  base.agregar('clientes', { nombre: 'Juan Pérez', telefono: '2255 999' });
+  base.agregar('vehiculos', { patente: 'AB123CD', id_cliente_ultimo: 1 });
+  const page = await abrir();
+  await page.fill('#patente', 'AB123CD');
+  await page.locator('#patente').blur();
+  await page.waitForFunction(() => document.getElementById('cliente').value === 'Juan Pérez');
+  await cargar(page, { fecha: '2026-10-16' });
+  await page.waitForFunction(() => /Juan Pérez/.test(localStorage.getItem('semaforo-borrador') || ''));
+  await page.reload();
+  await page.waitForSelector('#borrador.abierto');
+  await page.click('#br-recuperar');
+  await cargar(page, { cliente: 'Marta Sosa', telefono: '2255 000', mano: 1000 });
+  await menu(page, 'b-pdf');
+  await aviso(page, /Guardado con el N° 16000/);
+  igual(base.tablas.clientes.map(c => c.nombre), ['Juan Pérez', 'Marta Sosa'], 'fichas');
+});
+
+prueba('Recuperar un borrador con el cliente propuesto y dejar el nombre reusa la ficha', async ({ abrir, base }) => {
+  base.agregar('clientes', { nombre: 'Juan Pérez', telefono: '2255 999' });
+  base.agregar('vehiculos', { patente: 'AB123CD', id_cliente_ultimo: 1 });
+  const page = await abrir();
+  await page.fill('#patente', 'AB123CD');
+  await page.locator('#patente').blur();
+  await page.waitForFunction(() => document.getElementById('cliente').value === 'Juan Pérez');
+  await cargar(page, { fecha: '2026-10-16' });
+  await page.waitForFunction(() => /Juan Pérez/.test(localStorage.getItem('semaforo-borrador') || ''));
+  await page.reload();
+  await page.waitForSelector('#borrador.abierto');
+  await page.click('#br-recuperar');
+  await cargar(page, { mano: 1000 });
+  await menu(page, 'b-pdf');
+  await aviso(page, /Guardado con el N° 16000/);
+  igual(base.tablas.clientes.map(c => c.nombre), ['Juan Pérez'], 'fichas');
+});
+
+prueba('Buscar con coma, paréntesis o un número largo', async ({ abrir, base }) => {
+  base.agregar('clientes', { nombre: 'Pérez, Juan' });
+  base.agregar('clientes', { nombre: 'Gómez (hijo)' });
+  guardado(base, { numero_presupuesto: 16000, id_cliente: 1, txt_cliente: 'Pérez, Juan' });
+  guardado(base, { numero_presupuesto: 16001, id_cliente: 2, txt_cliente: 'Gómez (hijo)' });
+  guardado(base, { numero_presupuesto: 16002, txt_cliente: 'Gómez Padre' });
+  const page = await abrir();
+  await menu(page, 'b-hist');
+  await page.locator('#lista .item').nth(2).waitFor();
+  /* Se espera la lista exacta: la completa ya trae los tres, y conformarse con que
+     aparezca uno haría pasar la prueba antes de que llegue la búsqueda. */
+  const buscar = async (texto, esperado) => {
+    await page.fill('#buscar', texto);
+    try{
+      await page.waitForFunction(e => [...document.querySelectorAll('#lista .item .i-n, #lista .vacio')]
+        .map(x => x.textContent).join('|') === e, esperado, { timeout: 5000 });
+    }catch(e){
+      throw new Error('buscando "' + texto + '" esperaba "' + esperado + '", dio "' + await page.textContent('#lista') + '"');
+    }
+  };
+  await buscar('pérez, juan', 'N° 16000 — Pérez, Juan');
+  await buscar('gómez (hijo)', 'N° 16001 — Gómez (hijo)');
+  await buscar('2255111222', 'Ningún presupuesto coincide con esa búsqueda.');
+});
+
+prueba('Descartar el pendiente que está en pantalla deja la hoja en blanco', async ({ abrir, base }) => {
+  guardado(base, { numero_presupuesto: null, txt_cliente: 'Pendiente Abierto' });
+  const page = await abrir();
+  await abrirDelHistorial(page, 'Pendiente Abierto');
+  await menu(page, 'b-hist');
+  const fila = page.locator('#lista .item', { hasText: 'Pendiente Abierto' });
+  await fila.locator('.i-ficha').click();
+  await page.click('.ficha .f-descartar');
+  await aviso(page, /Era el que estaba en pantalla/);
+  igual(await page.inputValue('#cliente'), '', 'cliente en la hoja');
+  await page.click('#b-cerrar');
+  await cargar(page, COMPLETO);
+  await menu(page, 'b-pdf');
+  await aviso(page, /Guardado con el N° 16000/);
+  igual(base.tablas.trabajos.map(t => [t.numero_presupuesto, t.txt_cliente]), [[16000, 'Ana Ruiz']], 'la base');
+});
+
+prueba('Si descartaron el pendiente desde otro equipo, guardar avisa y no pierde lo cargado', async ({ abrir, base }) => {
+  guardado(base, { numero_presupuesto: null, txt_cliente: 'Ana Ruiz' });
+  const page = await abrir();
+  await abrirDelHistorial(page, 'Ana Ruiz');
+  base.tablas.trabajos = [];                       // otro celular lo descarta
+  await cargar(page, { ...COMPLETO, cliente: undefined });
+  await menu(page, 'b-pdf');
+  await aviso(page, /lo habían descartado/);
+  igual(await page.inputValue('#cliente'), 'Ana Ruiz', 'lo cargado sigue en pantalla');
+  await menu(page, 'b-pdf');
+  await aviso(page, /Guardado con el N° 16001/);   // el 16000 se gastó en el intento que chocó (RF-020)
+  igual(base.tablas.trabajos.map(t => t.txt_cliente), ['Ana Ruiz'], 'trabajos en la base');
+  igual(base.tablas.trabajo_items.length, 2, 'renglones');
+});
+
+prueba('Sin señal, el login avisa y se puede volver a intentar', async ({ abrir, base }) => {
+  const page = await abrir({ sesion: false });
+  base.sinRed = true;
+  await entrar(page, 'clave');
+  await page.waitForSelector('#login-error:not([hidden])');
+  igual(await page.textContent('#login-error'), 'Sin conexión. Revisá internet y probá de nuevo', 'aviso sin señal');
+  igual(await page.textContent('#login-entrar'), 'Ingresar', 'botón');
+  base.sinRed = false;
+  await page.click('#login-entrar');
+  await esperarApp(page);
+});
+
+prueba('Sin señal, los avisos salen en castellano y no se gasta número', async ({ abrir, base }) => {
+  const page = await abrir();
+  await cargar(page, COMPLETO);
+  base.sinRed = true;
+  await menu(page, 'b-pdf');
+  await aviso(page, /^Sin conexión\. Revisá internet y probá de nuevo$/);
+  await menu(page, 'b-hist');
+  await page.waitForFunction(() => /No se pudo leer el historial/.test(document.getElementById('lista').textContent));
+  await page.click('#b-cerrar');
+  base.sinRed = false;
+  igual(base.tablas.trabajos.length, 0, 'trabajos');
+  igual(base.numero, 16000, 'número siguiente');
+  await menu(page, 'b-pdf');
+  await aviso(page, /Guardado con el N° 16000/);
+});
+
+prueba('Cerrar sesión con algo cargado avisa, y el siguiente entra con la hoja en blanco', async ({ abrir }) => {
+  const page = await abrir();
+  await cargar(page, { cliente: 'De Usuario Uno' });
+  await page.waitForFunction(() => localStorage.getItem('semaforo-borrador'));
+  await menu(page, 'b-salir');
+  ok(/sin guardar/.test(page.dialogos.at(-1)), 'no avisó que había algo sin guardar: "' + page.dialogos.at(-1) + '"');
+  await entrar(page, 'clave');
+  await esperarApp(page);
+  igual(await page.inputValue('#cliente'), '', 'cliente en la hoja');
+  igual(await page.locator('#borrador.abierto').count(), 0, 'ofrece un borrador descartado');
+});
+
+prueba('Si después de vencer la sesión entra otra persona, no ve lo del anterior', async ({ abrir, base }) => {
+  base.usuarios.push({ email: 'otro@semaforo.test', password: 'clave2', sub: 'usuario-2' });
+  const page = await abrir();
+  await cargar(page, { cliente: 'De Usuario Uno' });
+  base.vencerSesiones();
+  await menu(page, 'b-hist');
+  await entrar(page, 'clave2', 'otro@semaforo.test');
+  await esperarApp(page);
+  igual(await page.inputValue('#cliente'), '', 'cliente en la hoja del segundo usuario');
+  const b = JSON.parse(await page.evaluate(() => localStorage.getItem('semaforo-borrador')));
+  igual([b.usuario, b.datos.cliente], ['usuario-1', 'De Usuario Uno'], 'el borrador del primero');
 });
 
 /* ===================== correr ===================== */
