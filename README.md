@@ -1,228 +1,76 @@
 # Presupuestos — Taller El Semáforo
 
-Herramienta web para armar, numerar, imprimir y archivar los presupuestos del
-taller. Funciona en el navegador, sin instalar nada — pero **necesita conexión a
-internet**: el historial y la numeración viven en una base de datos compartida, no en
-este equipo.
+Aplicación web para emitir, numerar, imprimir y archivar los presupuestos del taller
+de chapa y pintura El Semáforo.
 
-**Usala acá:** https://tato22-alt.github.io/semaforo-presupuesto/
+**Producción:** https://tato22-alt.github.io/semaforo-presupuesto/
 
----
+## Funcionalidades
 
-## Cómo entrar
+- Carga del presupuesto: cliente, vehículo, repuestos y mano de obra, con total en
+  cifras y en letras.
+- Numeración correlativa centralizada en la base, a partir del N° 16000, sin
+  repeticiones.
+- Presupuestos pendientes, que no consumen número hasta emitirse.
+- Historial compartido entre equipos, con búsqueda por cliente, patente o número.
+- Seguimiento posterior: si el trabajo se concretó y si fue particular o siniestro.
+- Recuperación automática de lo cargado si se cierra la pestaña.
+- Impresión y PDF con medidas contra la adulteración (total en letras y microtexto).
+- Exportación del historial completo a CSV.
+- Instalable en el celular (PWA).
 
-Pide email y contraseña la primera vez. La sesión queda guardada en este navegador,
-así que no hay que volver a escribirla cada vez — pero **cualquier equipo con
-usuario y contraseña ve el mismo historial**, no hace falta usar siempre la misma
-computadora. Si en algún momento pide iniciar sesión de nuevo (la sesión venció, o se
-cerró desde el menú), es normal.
+## Arquitectura
 
-Los usuarios se dan de alta desde el panel de Supabase, no desde esta página.
+| Componente | Tecnología |
+|---|---|
+| Interfaz | Un único `index.html` con HTML, CSS y JavaScript, sin dependencias ni compilación |
+| Base de datos | Supabase (PostgreSQL), accedida mediante su API REST |
+| Autenticación | Supabase Auth (email y contraseña) |
+| Publicación | GitHub Pages, directamente desde `main` |
 
-## Numeración
+El esquema de la base, sus migraciones y sus permisos se mantienen en el repositorio
+[`semaforo-modelo-datos`](https://github.com/tato22-alt/semaforo-modelo-datos).
 
-El número de cada presupuesto nuevo lo entrega la base, no el navegador. Arranca en
-el **16000** (donde terminó el talonario de papel) y nunca repite ni retrocede.
+## Estructura
 
-**El número se asigna recién al guardar.** Hasta ese momento la hoja muestra `N° —`.
-Abrir la herramienta, o empezar uno nuevo y arrepentirse, no gasta ningún número.
+```
+index.html         La aplicación completa
+manifest.json      Configuración de la PWA
+icono-*.png        Íconos de la PWA
+logo.png           Logo de la hoja impresa
+pruebas/           Pruebas automáticas
+MANUAL.md          Manual de uso
+CONEXION-BASE.md   Integración con la base y decisiones técnicas
+```
 
-Si un guardado falla a mitad de camino, ese número sí queda usado y el siguiente sigue
-de largo. Es a propósito: es la única forma de garantizar que dos presupuestos nunca
-lleven el mismo número. Por eso la numeración puede tener algún hueco.
+## Desarrollo
 
-## Qué dice cada renglón
+No requiere instalación ni compilación: alcanza con abrir `index.html` en un servidor
+local, por ejemplo:
 
-El renglón de **Mano de obra** tiene un espacio para escribir qué trabajo incluye
-—"desabollado y pintura de tres paños, con pulido"— al lado de su importe. No es
-obligatorio: si se deja vacío, la hoja sale como siempre, sólo con "Mano de obra".
+```
+python3 -m http.server 8000
+```
 
-Tanto ahí como en los renglones de repuestos, el texto **baja de renglón solo**: lo
-que se escribe se lee entero en el papel, por largo que sea.
+Los usuarios se dan de alta desde el panel de Supabase.
 
-## Campos obligatorios
+## Pruebas
 
-Antes de guardar, la herramienta pide: **fecha, cliente con teléfono, y mano de obra
-mayor a cero**. Los renglones de repuestos son opcionales — a veces el trabajo es sólo
-mano de obra.
+```
+node pruebas/correr.js
+```
 
-**El N° de chasis y las Observaciones no son obligatorios.** El chasis no siempre se
-tiene a mano, y las observaciones casi siempre van vacías: son para cuando hace falta
-aclarar algo (un plazo, una condición, que el trabajo queda sujeto a revisión al
-desarmar).
+Requieren Node y Playwright. Ejecutan la página en Chromium contra una base simulada
+en memoria, sin tocar la base real. Detalle en [`pruebas/README.md`](pruebas/README.md).
 
-## Dejarlo pendiente y terminarlo después
+Todas deben pasar antes de publicar un cambio.
 
-Cuando tomás el auto y falta el precio de un repuesto, o hay que verlo desarmado para
-poner la mano de obra, **no hace falta terminarlo ahí**. Con **Acciones → Dejar
-pendiente** se guarda como está. Lo único que pide es **el nombre del cliente**, para
-poder encontrarlo después.
+## Publicación
 
-Un pendiente **no gasta número**: aparece como `N° —`, y si lo imprimís sale así, sin
-número. Si al final no va a ningún lado, lo descartás y no queda ningún hueco en la
-numeración.
+Cada cambio integrado en `main` queda publicado en GitHub Pages en uno o dos minutos.
 
-Lo terminás abriéndolo desde **Ver historial** —los pendientes salen arriba de todo,
-marcados— completando lo que faltaba y guardando como siempre. Ahí recibe su número. Es
-el mismo presupuesto, no uno nuevo.
+## Documentación
 
-**Un pendiente sí se puede descartar** (Ficha → Descartar), justamente porque nunca tuvo
-número. Uno ya emitido no: eso no cambió, y la que lo impide es la base, no la página.
-Si descartás el que tenés abierto en pantalla, la hoja queda en blanco.
-
-Si otra persona lo descartó desde otro equipo mientras vos lo tenías abierto, al
-guardar te avisa, y lo que cargaste queda en pantalla como un presupuesto nuevo:
-volvés a guardar y listo.
-
-Sobre un presupuesto ya emitido, ese mismo botón pasa a decir **Guardar cambios**: sirve
-para corregir algo sin tener que volver a imprimirlo.
-
-## Si se cierra la pestaña a mitad de un presupuesto
-
-Pasa sobre todo en el celular: dejás un presupuesto a medio cargar para atender a
-alguien, y cuando volvés el navegador cerró la pestaña por su cuenta. **Lo cargado no
-se pierde.** La herramienta lo va guardando sola en ese equipo mientras escribís, sin
-que tengas que apretar nada.
-
-Al volver a abrir la página aparece un cartel, **"Quedó un presupuesto sin guardar"**,
-que dice de quién era y de cuándo es, con dos opciones: **Recuperar** o **Descartar**.
-No se recupera solo, a propósito: así nadie sigue sin darse cuenta un presupuesto que
-otro estaba corrigiendo.
-
-**Lo recuperado todavía no está en la base.** Hay que guardarlo como siempre. Si era un
-presupuesto viejo que estabas corrigiendo, sigue siendo ese mismo, con su número: no se
-crea uno nuevo.
-
-Algunas cosas que conviene saber:
-
-- **Es uno solo, y queda en ese equipo.** Si empezás otro presupuesto, el anterior sin
-  guardar se pierde. No se pasa a otro celular ni a otra computadora: para eso está
-  **Dejar pendiente**.
-- **Se borra solo cuando ya no hace falta**: al guardar (emitido o pendiente) y al
-  apretar **Nuevo presupuesto** y confirmar que descartás lo que había.
-- **Si se vence la sesión, no se pierde.** Volvés a iniciar sesión y lo encontrás como
-  estaba. Si en cambio entra otra persona, encuentra la hoja en blanco.
-- **Cada usuario ve el suyo.** En un equipo compartido, a nadie se le ofrece lo que
-  cargó otro.
-- **Si cerrás sesión con algo sin guardar**, te avisa antes: si seguís, se descarta.
-  Para conservarlo, dejalo pendiente primero.
-- **Si quedó dañado**, la página abre igual y arriba aparece una franja que deja
-  descargarlo como texto antes de descartarlo. Los presupuestos guardados no corren
-  ningún riesgo: están en la base.
-- **En una ventana privada**, o si el navegador no deja guardar nada, avisa una vez que
-  no hay respaldo. Guardar en la base funciona igual.
-
-## Guardar y hacer PDF
-
-Guardar hace varias llamadas a la base (cliente, vehículo, presupuesto y renglones),
-no una sola. Si alguna falla a mitad de camino, la herramienta lo avisa con el número
-de presupuesto de por medio — no queda nada guardado a medias sin que se note.
-
-**Cuando eso pasa, volvé a apretar Guardar y listo.** El número ya emitido no se
-pierde y no se gasta otro: el segundo intento corrige el mismo presupuesto en vez de
-crear uno nuevo. No hace falta reabrirlo del historial.
-
-## Lo que protege la hoja impresa
-
-Dos cosas, y ninguna impide falsificar un papel —nada impreso lo impide—: lo que
-hacen es que la adulteración se note.
-
-- **El total en letras**, debajo de la cifra. Es la defensa vieja y la mejor: cambiar
-  "$473.000" es fácil, cambiar también "Cuatrocientos setenta y tres mil" sin que se
-  note, no.
-- **El microtexto pegado al total**: una tira diminuta que repite número, importe y
-  fecha. Para alterar la cifra hay que rehacer también esa tira, y a ese cuerpo de
-  letra no se empareja a ojo. Fotocopiado se empasta, que ya es una señal.
-
-Hubo también una marca de agua en diagonal, y se sacó: cruzaba la zona de los
-repuestos y quedaba demasiado oscura. Un pendiente impreso sale sin número (`N° —`):
-no es un presupuesto emitido.
-
-Verificar de verdad un papel sigue siendo lo mismo: buscar ese número en el historial
-y comparar el monto.
-
-## Historial
-
-Se lee de la base, compartido entre todos los que usan la herramienta. Al abrir un
-presupuesto viejo se pueden corregir sus datos y volver a guardarlo — pisa la versión
-anterior, no crea uno nuevo.
-
-**Un presupuesto no se puede borrar.** Es un registro histórico a propósito: ni
-siquiera desde el panel de la base se lo elimina en el uso normal.
-
-## Marcar si se concretó, y si fue por seguro
-
-Eso no se sabe cuando emitís el presupuesto, así que no está en el formulario. Se carga
-después, desde **Ver historial**: cada presupuesto tiene un botón **Ficha** que abre dos
-opciones —*No se concretó* y *Origen: particular / siniestro*— y guarda solo.
-
-**No cambia nada del presupuesto ya impreso.** Es información interna del taller: el
-cliente nunca ve si su trabajo entró como siniestro.
-
-Conviene marcarlo cuando se sabe. Con eso, más adelante vas a poder saber qué porcentaje
-de lo que cotizás se convierte en trabajo y cuánto de tu facturación depende de las
-aseguradoras — dos cosas que no se pueden reconstruir para atrás.
-
-## Buscar en el historial
-
-Arriba de la lista hay un buscador. Escribí el **nombre del cliente** (sin importar
-acentos ni mayúsculas: *peña* encuentra a *Peña* y a *Pena*), una **patente** (da igual
-cómo la escribas) o directamente el **número de presupuesto**. Se puede buscar con
-comas o paréntesis, tal como está escrito el nombre ("Pérez, Juan", "Gómez (hijo)").
-
-## Cuando un auto vuelve
-
-Si cargás una patente que ya estuvo en el taller, la herramienta te ofrece traer los
-datos del último presupuesto de ese vehículo: cliente, teléfono, la descripción del
-auto y su número de chasis. Aceptás y te ahorra tipear todo de nuevo.
-
-Además evita algo que se paga caro con el tiempo: **que el mismo cliente termine con
-cuatro fichas distintas.** Si aceptás la propuesta y dejás el nombre como está, se
-actualiza esa ficha. Si el auto cambió de dueño y escribís otro nombre, se crea una
-ficha nueva y la del dueño anterior queda intacta.
-
-Al guardar, el auto queda anotado con el cliente de ese presupuesto: la próxima vez
-que vuelva, se propone el dueño actual y no uno anterior. Corregir un presupuesto
-viejo no cambia eso.
-
-## Descargar CSV
-
-Desde **Acciones → Descargar CSV** se arma una planilla con todo el historial —
-sirve para contabilidad o para abrir en Excel. No es un respaldo del que dependa
-recuperar nada: eso ya lo garantiza la base.
-
-Sale **todo**, no sólo los últimos 200 que muestra la lista. Cada presupuesto va con
-sus renglones de repuestos y, al final, el de mano de obra. Al terminar, el aviso dice
-cuántos presupuestos salieron.
-
-**Si no llegó todo, no se descarga nada.** Si se corta la conexión, o alguien guarda o
-descarta un presupuesto justo mientras se arma, avisa y hay que volver a apretar. Una
-planilla incompleta que parece completa es peor que ninguna.
-
-## Formato de patente
-
-Al salir del campo Patente, si el formato no coincide con ninguna patente argentina
-conocida (la de antes de 2016 o la Mercosur), avisa — pero no bloquea. Puede ser una
-patente extranjera o un error de tipeo; queda a criterio de quien carga.
-
-## Si algo no anda
-
-- **"Email o contraseña incorrectos"** — revisá los dos. Si seguís sin poder entrar,
-  consultá con quien administra los usuarios en Supabase.
-- **"Sin conexión. Revisá internet y probá de nuevo"** — el equipo no llegó a la base.
-  No se guardó nada ni se gastó ningún número: cuando vuelva la señal, apretá de nuevo.
-- **Un aviso dice que algo "no se pudo guardar" o "no se pudo pedir"** — casi
-  siempre es la conexión. Revisá el internet del equipo y volvé a intentar; nada se
-  guarda a medias sin avisar.
-- **La sesión pide iniciar sesión de nuevo sin avisar** — el token venció y no se
-  pudo renovar solo. Iniciá sesión otra vez, no se perdió nada.
-
-## Detalle técnico
-
-`CONEXION-BASE.md` documenta cómo se conecta esta página con la base (qué llamadas
-hace, qué mecanismos viejos se retiraron y por qué, y las cosas que quedan
-pendientes) para quien retome este código.
-
-`pruebas/` tiene las pruebas automáticas de la página: se corren con
-`node pruebas/correr.js` y no tocan la base real. Antes de subir un cambio tienen
-que pasar todas.
+- [`MANUAL.md`](MANUAL.md): uso diario de la aplicación y solución de problemas.
+- [`CONEXION-BASE.md`](CONEXION-BASE.md): cómo se conecta con la base y por qué.
+- [`pruebas/README.md`](pruebas/README.md): alcance y limitaciones de las pruebas.

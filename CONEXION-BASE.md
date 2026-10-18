@@ -217,7 +217,7 @@ cambiarla, la propuesta aceptada se conserva; y el borrador la guarda aparte, as
 recuperarlo sigue valiendo la misma regla. Todo eso está cubierto por
 `pruebas/correr.js`.
 
-## Qué falta (documentado en README y en `mejoras-futuras.md` de la base)
+## Qué falta (documentado en MANUAL y en `mejoras-futuras.md` de la base)
 
 - Concurrencia: si dos personas reeditan el mismo presupuesto a la vez, gana el último
   que guarda — no hay bloqueo optimista. Sin uso real todavía para que esto importe.
