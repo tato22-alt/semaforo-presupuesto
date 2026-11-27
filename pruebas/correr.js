@@ -208,9 +208,21 @@ prueba('Si falta un dato obligatorio no se emite ni se gasta número', async ({ 
   const page = await abrir();
   await cargar(page, { ...COMPLETO, telefono: '' });
   await menu(page, 'b-pdf');
-  await aviso(page, /Falta cargar: el teléfono/);
+  const texto = await aviso(page, /falta cargar el número de teléfono/);
+  igual(/error/i.test(texto), false, 'el aviso no habla de error');
+  igual(await page.evaluate(() => document.activeElement.id), 'telefono', 'el cursor queda en el teléfono');
+  igual(await page.locator('#telefono.falta').count(), 1, 'el teléfono queda marcado');
+  await page.fill('#telefono', '2255 111222');
+  igual(await page.locator('#telefono.falta').count(), 0, 'la marca se va al escribir');
   igual(base.contar('POST', '/rest/v1/rpc/fn_proximo_numero_presupuesto'), 0, 'números pedidos');
   igual(base.tablas.trabajos.length, 0, 'trabajos en la base');
+});
+
+prueba('Si faltan varios datos los nombra a todos', async ({ abrir }) => {
+  const page = await abrir();
+  await cargar(page, { ...COMPLETO, telefono: '', mano: '' });
+  await menu(page, 'b-pdf');
+  await aviso(page, /falta cargar el número de teléfono y el importe de la mano de obra/);
 });
 
 prueba('Dejar pendiente no gasta número, y se termina desde el historial', async ({ abrir, base }) => {
@@ -333,20 +345,69 @@ prueba('Buscar en el historial por nombre sin acentos, patente o número', async
   await buscar('16002', 'N° 16002 — Tercero');
 });
 
-prueba('Descartar un pendiente; un emitido no se puede descartar', async ({ abrir, base }) => {
+prueba('Borrar un pendiente; un emitido no tiene botón para borrarlo', async ({ abrir, base }) => {
   guardado(base, { numero_presupuesto: null, txt_cliente: 'Pendiente Uno' });
   guardado(base, { numero_presupuesto: 16000, txt_cliente: 'Emitido Uno' });
   const page = await abrir();
   await menu(page, 'b-hist');
   const emitido = page.locator('#lista .item', { hasText: 'Emitido Uno' });
-  await emitido.locator('.i-ficha').click();
-  igual(await page.locator('.ficha .f-descartar').count(), 0, 'botón Descartar en un emitido');
-  await emitido.locator('.i-ficha').click();
+  igual(await emitido.locator('.i-borrar').count(), 0, 'botón Borrar en un emitido');
   const pendiente = page.locator('#lista .item', { hasText: 'Pendiente Uno' });
-  await pendiente.locator('.i-ficha').click();
-  await page.click('.ficha .f-descartar');
-  await aviso(page, /Pendiente descartado/);
+  igual(await pendiente.locator('.i-ficha').count(), 0, 'botón Ficha en un pendiente');
+  await pendiente.locator('.i-borrar').click();
+  await aviso(page, /Pendiente borrado/);
   igual(base.tablas.trabajos.map(t => t.txt_cliente), ['Emitido Uno'], 'lo que queda en la base');
+  await page.waitForSelector('#b-borrar-pend', { state: 'hidden' });
+});
+
+prueba('Borrar todos los pendientes de una vez, sin tocar los emitidos', async ({ abrir, base }) => {
+  guardado(base, { numero_presupuesto: null, txt_cliente: 'Pendiente Uno' });
+  guardado(base, { numero_presupuesto: 16000, txt_cliente: 'Emitido Uno' });
+  guardado(base, { numero_presupuesto: null, txt_cliente: 'Pendiente Dos' });
+  const page = await abrir();
+  await abrirDelHistorial(page, 'Pendiente Dos');
+  await menu(page, 'b-hist');
+  await page.waitForFunction(() => document.getElementById('b-borrar-pend').textContent === 'Borrar los 2 pendientes sin emitir');
+  page.aceptarDialogos = false;                    // primero se arrepiente
+  await page.click('#b-borrar-pend');
+  igual(base.tablas.trabajos.length, 3, 'trabajos después de cancelar');
+  page.aceptarDialogos = true;
+  await page.click('#b-borrar-pend');
+  await aviso(page, /Se borraron 2 pendientes/);
+  igual(/Pendiente Uno/.test(page.dialogos[1]) && /Pendiente Dos/.test(page.dialogos[1]), true, 'la pregunta los nombra');
+  igual(base.tablas.trabajos.map(t => t.txt_cliente), ['Emitido Uno'], 'lo que queda en la base');
+  igual(await page.inputValue('#cliente'), '', 'el que estaba en pantalla se fue de la hoja');
+  await page.waitForSelector('#b-borrar-pend', { state: 'hidden' });
+  await page.waitForFunction(() => document.querySelectorAll('#lista .item').length === 1);
+});
+
+prueba('Sin pendientes no aparece el botón de borrarlos', async ({ abrir, base }) => {
+  guardado(base, { numero_presupuesto: 16000, txt_cliente: 'Emitido Uno' });
+  const page = await abrir();
+  await menu(page, 'b-hist');
+  await page.waitForSelector('#lista .item');
+  igual(await page.locator('#b-borrar-pend').isHidden(), true, 'botón oculto');
+});
+
+prueba('Impreso, el detalle largo del último renglón entra entero y la mano de obra lleva los materiales', async ({ abrir }) => {
+  const page = await abrir();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const largo = 'Chapa y pintura de puerta delantera izquierda, guardabarro y zócalo, ' +
+                'con desabollado, masillado, fondo, pintura bicapa y pulido final de toda la zona trabajada';
+  await cargar(page, { ...COMPLETO, renglones: [['Paragolpe', 120000], [largo, 45000]] });
+  await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+  await page.emulateMedia({ media: 'print' });
+  const r = await page.evaluate(() => {
+    const filas = [...document.querySelectorAll('#items tr')];
+    const esp = filas[1].querySelector('.espejo');
+    return { texto: esp.textContent, alto: esp.scrollHeight, visible: esp.clientHeight,
+             textarea: getComputedStyle(filas[1].querySelector('.det')).display,
+             mo: document.querySelector('.mo-cel span').textContent };
+  });
+  igual(r.texto, largo, 'el texto impreso');
+  igual(r.textarea, 'none', 'el textarea no se imprime');
+  igual(r.alto <= r.visible, true, 'no queda texto cortado');
+  igual(r.mo, 'Mano de obra con materiales de pintura', 'rótulo de la mano de obra');
 });
 
 prueba('La ficha guarda si se concretó y el origen', async ({ abrir, base }) => {
@@ -542,14 +603,13 @@ prueba('Buscar con coma, paréntesis o un número largo', async ({ abrir, base }
   await buscar('2255111222', 'Ningún presupuesto coincide con esa búsqueda.');
 });
 
-prueba('Descartar el pendiente que está en pantalla deja la hoja en blanco', async ({ abrir, base }) => {
+prueba('Borrar el pendiente que está en pantalla deja la hoja en blanco', async ({ abrir, base }) => {
   guardado(base, { numero_presupuesto: null, txt_cliente: 'Pendiente Abierto' });
   const page = await abrir();
   await abrirDelHistorial(page, 'Pendiente Abierto');
   await menu(page, 'b-hist');
   const fila = page.locator('#lista .item', { hasText: 'Pendiente Abierto' });
-  await fila.locator('.i-ficha').click();
-  await page.click('.ficha .f-descartar');
+  await fila.locator('.i-borrar').click();
   await aviso(page, /Era el que estaba en pantalla/);
   igual(await page.inputValue('#cliente'), '', 'cliente en la hoja');
   await page.click('#b-cerrar');

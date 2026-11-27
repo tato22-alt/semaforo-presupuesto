@@ -203,10 +203,14 @@
   .ficha label{font-size:12.5px;display:flex;align-items:center;gap:6px;color:var(--tinta)}
   .ficha select{font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid var(--linea);background:#fff}
   .ficha .f-estado{font-size:11.5px;color:var(--verde);font-weight:700}
-  .ficha .f-nota{font-size:12.5px;color:var(--tenue)}
-  .f-descartar{border:1px solid #f0c7cf;background:#fff;color:var(--rojo);font:inherit;
-               font-size:12.5px;font-weight:600;padding:6px 11px;cursor:pointer}
-  .f-descartar:hover{background:#fdecef}
+  .i-borrar{border:1px solid #f0c7cf;background:#fff;color:var(--rojo);font:inherit;
+            font-size:11px;font-weight:700;padding:5px 9px;cursor:pointer;flex:none}
+  .i-borrar:hover{background:#fdecef}
+  .borrar-pend{display:block;width:calc(100% - 32px);margin:10px 16px 0;border:1px solid #f0c7cf;
+               background:#fff;color:var(--rojo);font:inherit;font-size:13px;font-weight:700;
+               padding:9px;cursor:pointer}
+  .borrar-pend:hover{background:#fdecef}
+  .borrar-pend:disabled{opacity:.55;cursor:progress}
 
   /* ---------- modales chicos: login, carga ---------- */
   .modal.centrado.abierto{align-items:center}
@@ -241,6 +245,12 @@
   .franja button{border:1px solid #8c0f2c;background:transparent;color:#8c0f2c;font:inherit;
                  font-size:12.5px;font-weight:600;padding:7px 11px;cursor:pointer}
   .franja button:hover{background:#8c0f2c;color:#fff}
+
+  /* Un dato obligatorio que falta para emitir: se marca hasta que se escriba algo. */
+  input.falta{background:#fdecef!important;box-shadow:inset 0 -2px 0 var(--rojo)}
+
+  /* Copia del texto de cada textarea que sólo se ve impresa (ver espejarTextos). */
+  .espejo{display:none}
 
   /* ---------- avisos ---------- */
   .aviso{
@@ -288,6 +298,17 @@
     td.x{display:none}
     tr.vacia{display:none!important}
     input{background:transparent!important}
+    input.falta{box-shadow:none}
+
+    /* Un textarea impreso conserva el alto que tenía en pantalla. Si la hoja es más
+       angosta que la pantalla o la letra más grande, el texto necesita más líneas que
+       las que entran y el último renglón se corta o se monta sobre el de abajo. En el
+       papel se imprime en su lugar una copia en un div, que crece lo que haga falta. */
+    textarea.det,textarea.mo-det{display:none!important}
+    .espejo{display:block;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.35;
+            padding:7px 13px;font-size:15px}
+    .espejo.mo-esp{padding:1px 13px 0;font-size:14px;color:#3a3f45}
+    .espejo:empty{display:none}
 
     /* los enlaces siguen siendo clickeables pero NUNCA muestran la URL */
     a[href]:after,a[href]:before{content:none!important}
@@ -421,7 +442,7 @@
       <tfoot>
         <tr class="r-mo">
           <td class="mo-cel">
-            <span>Mano de obra</span>
+            <span>Mano de obra con materiales de pintura</span>
             <textarea class="mo-det" id="mo-det" rows="1" placeholder="qué trabajo incluye (opcional)"></textarea>
           </td>
           <td class="imp"><input id="mo" inputmode="numeric" placeholder="0"></td>
@@ -457,6 +478,7 @@
       <h2>Presupuestos guardados</h2>
       <button id="b-cerrar" aria-label="Cerrar">×</button>
     </div>
+    <button class="borrar-pend" id="b-borrar-pend" hidden></button>
     <div class="buscador">
       <input id="buscar" placeholder="Buscar por cliente, patente o número" autocomplete="off">
     </div>
@@ -900,6 +922,21 @@ function ajustarAlto(t){
 }
 const ajustarTodo = () => [...document.querySelectorAll('textarea.det,textarea.mo-det')].forEach(ajustarAlto);
 
+/* Antes de imprimir, cada textarea deja al lado una copia de su texto en un div: es
+   lo que sale en el papel (ver @media print). Un textarea no cambia de alto solo al
+   pasar a la hoja A4, y el texto que no le entraba se cortaba en el último renglón. */
+function espejarTextos(){
+  document.querySelectorAll('textarea.det,textarea.mo-det').forEach(t => {
+    let e = t.nextElementSibling;
+    if(!e || !e.classList.contains('espejo')){
+      e = document.createElement('div');
+      e.className = 'espejo' + (t.classList.contains('mo-det') ? ' mo-esp' : '');
+      t.after(e);
+    }
+    e.textContent = t.value.trim();
+  });
+}
+
 function agregarRenglon(detalle = '', importe = ''){
   const tr = document.createElement('tr');
   tr.innerHTML =
@@ -1015,11 +1052,25 @@ function leerFormulario(){
    en el historial: de quién es (RF-503). */
 function camposFaltantes(p){
   const faltan = [];
-  if(!p.fecha)                 faltan.push('la fecha');
-  if(!p.cliente)                faltan.push('el nombre del cliente');
-  if(!p.telefono)               faltan.push('el teléfono');
-  if(!(p.monto_mano_obra > 0))  faltan.push('la mano de obra');
+  if(!p.fecha)                 faltan.push({ texto: 'la fecha', campo: 'fecha' });
+  if(!p.cliente)                faltan.push({ texto: 'el nombre del cliente', campo: 'cliente' });
+  if(!p.telefono)               faltan.push({ texto: 'el número de teléfono', campo: 'telefono' });
+  if(!(p.monto_mano_obra > 0))  faltan.push({ texto: 'el importe de la mano de obra', campo: 'mo' });
   return faltan;
+}
+
+/* "el teléfono y la mano de obra", no "el teléfono, la mano de obra". */
+const enLista = xs => xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' y ' + xs[xs.length - 1];
+
+/* Antes decía "Falta cargar: el teléfono", y con los dos puntos se leía como un
+   error del sistema. Ahora lo dice como lo diría una persona, y además lleva el
+   cursor al primer dato que falta y lo marca, para que no haya que buscarlo. */
+function avisarFaltantes(faltan){
+  avisar('Para emitir el presupuesto falta cargar ' + enLista(faltan.map(f => f.texto)));
+  faltan.forEach(f => $(f.campo).classList.add('falta'));
+  const primero = $(faltan[0].campo);
+  primero.focus();
+  primero.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
 function mostrar(p){
@@ -1031,6 +1082,7 @@ function mostrar(p){
   $('nro').textContent = p.numero != null ? p.numero : '—';
   $('nro-aviso').hidden = (p.numero != null);
   CAMPOS.forEach(c => $(c).value = p[c] || '');
+  document.querySelectorAll('.falta').forEach(e => e.classList.remove('falta'));
   pintarFecha();
   $('mo').value = conMiles(p.monto_mano_obra);
   $('mo-det').value = p.detalle_mano_obra || '';
@@ -1244,7 +1296,7 @@ function avisar(texto){
   a.textContent = texto;
   a.classList.add('ver');
   clearTimeout(a._t);
-  a._t = setTimeout(() => a.classList.remove('ver'), 3200);
+  a._t = setTimeout(() => a.classList.remove('ver'), texto.length > 60 ? 5000 : 3200);
 }
 
 const cerrarMenu = () => $('acciones').classList.remove('abierto');
@@ -1269,7 +1321,7 @@ async function guardarYPdf(){
   if(!p.cliente && !p.items.length) return avisar('Cargá al menos el cliente o un renglón');
 
   const faltan = camposFaltantes(p);
-  if(faltan.length) return avisar('Falta cargar: ' + faltan.join(', '));
+  if(faltan.length) return avisarFaltantes(faltan);
   /* Un importe negativo no tiene sentido en un presupuesto, y la base no lo frena
      (no hay control sobre el importe de los renglones): se ataja acá. */
   if(p.items.some(i => i.importe < 0)) return avisar('Hay un renglón con importe negativo');
@@ -1284,7 +1336,7 @@ async function guardarYPdf(){
     Borrador.borrar();                 // RF-705: ya es un hecho del taller
     avisar('Guardado con el N° ' + numeroActual + '. Elegí "Guardar como PDF"');
     if(document.activeElement) document.activeElement.blur();
-    setTimeout(() => window.print(), 420);
+    setTimeout(() => { espejarTextos(); window.print(); }, 420);
   }catch(e){
     /* Si el trabajo llegó a grabarse, la pantalla tiene que enterarse antes que nada:
        así un segundo intento corrige ESTE presupuesto y no crea otro (H18). */
@@ -1473,34 +1525,96 @@ async function guardarFicha(h, cambio, donde){
    Ojo con el resultado: cuando la política restrictiva lo impide, PostgREST NO
    devuelve error — borra cero filas y contesta que todo salió bien. Por eso se
    pide la fila de vuelta y se comprueba que haya venido algo. */
-async function descartarPendiente(fila, h, donde){
-  if(!confirm('¿Descartar este pendiente?\n\n' + (h.cliente_actual || h.txt_cliente || 'sin nombre') +
+async function descartarPendiente(fila, h){
+  if(!confirm('¿Borrar este pendiente?\n\n' + (h.cliente_actual || h.txt_cliente || 'sin nombre') +
               '\n\nNo tiene número asignado, así que no deja hueco en la numeración. No se puede deshacer.'))
     return;
-  donde.textContent = 'descartando…';
-  donde.style.color = 'var(--tenue)';
+  const boton = fila.querySelector('.i-borrar');
+  boton.disabled = true;
+  boton.textContent = 'Borrando…';
   try{
     const r = await api('/rest/v1/trabajos?id_trabajo=eq.' + h.id_trabajo, {
       method: 'DELETE', headers: { Prefer: 'return=representation' }
     });
-    if(!r.ok) throw new Error('No se pudo descartar');
+    if(!r.ok) throw new Error('No se pudo borrar');
     const borradas = await leerJSON(r) || [];
     if(!borradas.length) throw new Error('La base no lo borró — revisá si ya tiene número');
-    const panel = fila.nextElementSibling;
-    if(panel && panel.classList.contains('ficha')) panel.remove();
     fila.remove();
     /* Si era el que estaba abierto, la hoja no puede seguir apuntando a un trabajo
        que ya no existe: guardarlo después gastaba un número sin guardar nada. */
     if(h.id_trabajo === idTrabajoActual){
       Borrador.borrar();
       irANuevo();
-      return avisar('Pendiente descartado. Era el que estaba en pantalla: la hoja quedó en blanco');
+      return avisar('Pendiente borrado. Era el que estaba en pantalla: la hoja quedó en blanco');
     }
-    avisar('Pendiente descartado');
+    avisar('Pendiente borrado');
   }catch(e){
-    if(e.message === 'sin-sesion'){ mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
-    donde.textContent = e.message || 'no se pudo descartar';
-    donde.style.color = 'var(--rojo)';
+    if(e.message === 'sin-sesion'){ $('modal').classList.remove('abierto'); mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
+    boton.disabled = false;
+    boton.textContent = 'Borrar';
+    avisar(e.message || 'No se pudo borrar');
+  }finally{
+    contarPendientes();
+  }
+}
+
+/* ===================== borrar todos los pendientes =====================
+   Los que quedaron por error —un guardado de prueba, uno que se empezó y no se
+   siguió— se van todos juntos con un botón arriba del historial. Sólo los que no
+   tienen número: la base no deja borrar un emitido (RF-507), y la consulta además
+   lo pide explícitamente, así que ni un error de la página podría tocarlos. */
+async function pedirPendientes(){
+  const r = await api('/rest/v1/vw_presupuestos?select=id_trabajo,cliente_actual,txt_cliente' +
+                      '&numero_presupuesto=is.null');
+  if(!r.ok) throw new Error('No se pudieron leer los pendientes');
+  return await leerJSON(r) || [];
+}
+
+let pendientesEnBase = [];
+
+async function contarPendientes(){
+  const b = $('b-borrar-pend');
+  try{ pendientesEnBase = await pedirPendientes(); }
+  catch(e){ pendientesEnBase = []; }
+  const n = pendientesEnBase.length;
+  b.hidden = !n;
+  b.textContent = n === 1 ? 'Borrar el pendiente sin emitir' : 'Borrar los ' + n + ' pendientes sin emitir';
+}
+
+async function borrarTodosLosPendientes(){
+  const lista = pendientesEnBase;
+  if(!lista.length) return;
+  const nombres = lista.slice(0, 12).map(h => '• ' + (h.cliente_actual || h.txt_cliente || 'sin nombre'));
+  if(lista.length > 12) nombres.push('• y ' + (lista.length - 12) + ' más');
+  if(!confirm('¿Borrar ' + (lista.length === 1 ? 'este pendiente' : 'estos ' + lista.length + ' pendientes') + '?\n\n' +
+              nombres.join('\n') +
+              '\n\nNinguno tiene número, así que no deja huecos en la numeración. ' +
+              'Los presupuestos emitidos no se tocan. No se puede deshacer.'))
+    return;
+  const b = $('b-borrar-pend');
+  b.disabled = true;
+  b.textContent = 'Borrando…';
+  try{
+    const ids = lista.map(h => h.id_trabajo).join(',');
+    const r = await api('/rest/v1/trabajos?numero_presupuesto=is.null&id_trabajo=in.(' + ids + ')', {
+      method: 'DELETE', headers: { Prefer: 'return=representation' }
+    });
+    if(!r.ok) throw new Error('No se pudieron borrar los pendientes');
+    const borrados = (await leerJSON(r) || []).map(f => f.id_trabajo);
+    /* Si el que estaba en pantalla era uno de ellos, la hoja no puede seguir
+       apuntando a un trabajo que ya no existe. */
+    if(idTrabajoActual && borrados.includes(idTrabajoActual)){
+      Borrador.borrar();
+      irANuevo();
+    }
+    avisar(borrados.length === 1 ? 'Se borró 1 pendiente' : 'Se borraron ' + borrados.length + ' pendientes');
+  }catch(e){
+    if(e.message === 'sin-sesion'){ $('modal').classList.remove('abierto'); mostrarLogin('La sesión venció. Iniciá sesión de nuevo'); return; }
+    avisar(e.message || 'No se pudieron borrar los pendientes');
+  }finally{
+    b.disabled = false;
+    listarHistorial($('buscar').value);
+    contarPendientes();
   }
 }
 
@@ -1508,21 +1622,6 @@ async function descartarPendiente(fila, h, donde){
 function alternarFicha(fila, h){
   const abierta = fila.nextElementSibling && fila.nextElementSibling.classList.contains('ficha');
   if(abierta){ fila.nextElementSibling.remove(); return; }
-
-  /* Un pendiente todavía no se emitió: si se concretó o si va por seguro son
-     preguntas que no corresponden hacerle. Lo único que se puede hacer con él es
-     terminarlo —abriéndolo— o descartarlo. */
-  if(h.numero_presupuesto == null){
-    const panel = document.createElement('div');
-    panel.className = 'ficha';
-    panel.innerHTML = '<span class="f-nota">Todavía sin emitir. Abrilo para terminarlo.</span>' +
-                      '<button class="f-descartar">Descartar</button><span class="f-estado"></span>';
-    panel.onclick = e => e.stopPropagation();
-    const est = panel.querySelector('.f-estado');
-    panel.querySelector('.f-descartar').onclick = () => descartarPendiente(fila, h, est);
-    fila.after(panel);
-    return;
-  }
 
   const panel = document.createElement('div');
   panel.className = 'ficha';
@@ -1590,7 +1689,18 @@ function filaHistorial(h){
   div.querySelector('.i-m').textContent = enPesos(h.monto_total);
   pintarMarcas(div, h);
 
-  div.querySelector('.i-ficha').onclick = e => { e.stopPropagation(); alternarFicha(div, h); };
+  /* Un pendiente todavía no se emitió: si se concretó o si va por seguro son
+     preguntas que no corresponden hacerle. Lo único que se puede hacer con él es
+     terminarlo —abriéndolo— o borrarlo, y el botón para borrarlo está a la vista. */
+  const boton = div.querySelector('.i-ficha');
+  if(h.numero_presupuesto == null){
+    boton.className = 'i-borrar';
+    boton.textContent = 'Borrar';
+    boton.title = 'Borrar este pendiente';
+    boton.onclick = e => { e.stopPropagation(); descartarPendiente(div, h); };
+  }else{
+    boton.onclick = e => { e.stopPropagation(); alternarFicha(div, h); };
+  }
 
   div.onclick = async () => {
     if(!confirmarDescarte()) return;
@@ -1635,7 +1745,9 @@ function abrirHistorial(){
   cerrarMenu();
   $('buscar').value = '';
   $('modal').classList.add('abierto');
+  $('b-borrar-pend').hidden = true;
   listarHistorial('');
+  contarPendientes();
 }
 
 /* ===================== login ===================== */
@@ -1685,6 +1797,7 @@ async function intentarLogin(){
 $('b-menu').onclick  = () => $('acciones').classList.toggle('abierto');
 $('b-pdf').onclick   = guardarYPdf;
 $('b-pend').onclick  = guardarPendiente;
+$('b-borrar-pend').onclick = borrarTodosLosPendientes;
 $('b-csv').onclick   = descargarCSV;
 $('b-hist').onclick  = abrirHistorial;
 /* Espera a que se deje de tipear para no disparar una consulta por tecla. */
@@ -1725,7 +1838,10 @@ $('mo-det').oninput   = () => { marcarSucio(); ajustarAlto($('mo-det')); marcarD
 /* El alto medido depende del ancho, así que hay que volver a medirlo cuando el
    ancho cambia: al girar el celular, al redimensionar, y al pasar a la hoja A4. */
 addEventListener('resize', ajustarTodo);
-addEventListener('beforeprint', ajustarTodo);
+addEventListener('beforeprint', () => { ajustarTodo(); espejarTextos(); });
+/* La marca de dato faltante se va apenas se escribe algo en ese campo. */
+document.addEventListener('input',  e => e.target.classList && e.target.classList.remove('falta'));
+document.addEventListener('change', e => e.target.classList && e.target.classList.remove('falta'));
 $('fecha').onchange   = () => { marcarSucio(); pintarFecha(); };
 $('chasis').onblur    = e => { e.target.value = e.target.value.trim().toUpperCase(); };
 $('patente').onblur   = async e => {

@@ -33,9 +33,10 @@ lleven el mismo número. Por eso la numeración puede tener algún hueco.
 
 ## Qué dice cada renglón
 
-El renglón de **Mano de obra** tiene un espacio para escribir qué trabajo incluye
-—"desabollado y pintura de tres paños, con pulido"— al lado de su importe. No es
-obligatorio: si se deja vacío, la hoja sale como siempre, sólo con "Mano de obra".
+El renglón de mano de obra sale impreso como **Mano de obra con materiales de
+pintura**, así no hace falta aclararlo a mano. Tiene además un espacio para escribir
+qué trabajo incluye —"desabollado y pintura de tres paños, con pulido"— al lado de su
+importe. No es obligatorio: si se deja vacío, sale sólo el rótulo.
 
 Tanto ahí como en los renglones de repuestos, el texto **baja de renglón solo**: lo
 que se escribe se lee entero en el papel, por largo que sea.
@@ -45,6 +46,10 @@ que se escribe se lee entero en el papel, por largo que sea.
 Antes de guardar, la herramienta pide: **fecha, cliente con teléfono, y mano de obra
 mayor a cero**. Los renglones de repuestos son opcionales — a veces el trabajo es sólo
 mano de obra.
+
+Si falta alguno, no es un error: el aviso dice cuál falta ("Para emitir el presupuesto
+falta cargar el número de teléfono"), el cursor salta a ese campo y lo marca en rojo
+hasta que escribas algo.
 
 **El N° de chasis y las Observaciones no son obligatorios.** El chasis no siempre se
 tiene a mano, y las observaciones casi siempre van vacías: son para cuando hace falta
@@ -66,9 +71,12 @@ Lo terminás abriéndolo desde **Ver historial** —los pendientes salen arriba 
 marcados— completando lo que faltaba y guardando como siempre. Ahí recibe su número. Es
 el mismo presupuesto, no uno nuevo.
 
-**Un pendiente sí se puede descartar** (Ficha → Descartar), justamente porque nunca tuvo
-número. Uno ya emitido no: eso no cambió, y la que lo impide es la base, no la página.
-Si descartás el que tenés abierto en pantalla, la hoja queda en blanco.
+**Un pendiente sí se puede borrar**, justamente porque nunca tuvo número. En **Ver
+historial** cada pendiente tiene su botón **Borrar**, y si hay pendientes aparece arriba
+de todo **Borrar los N pendientes sin emitir**, que los saca todos juntos (antes te
+pregunta, con la lista de nombres). Uno ya emitido no se borra nunca: eso no cambió, y
+la que lo impide es la base, no la página. Si borrás el que tenés abierto en pantalla,
+la hoja queda en blanco.
 
 Si otra persona lo descartó desde otro equipo mientras vos lo tenías abierto, al
 guardar te avisa, y lo que cargaste queda en pantalla como un presupuesto nuevo:
